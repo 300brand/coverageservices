@@ -29,6 +29,7 @@ func (s *Service) Registered(service *service.Service) {}
 
 func (s *Service) Started(service *service.Service) {
 	t = NewTicker(s.addFeed, time.Second*10)
+	go t.Run()
 	t.Start <- true
 }
 
