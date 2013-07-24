@@ -14,9 +14,10 @@ type Service struct{}
 const ServiceName = "Manager"
 
 var (
-	_     service.ServiceDelegate = &Service{}
-	t     *Ticker
-	Queue *client.ServiceClient
+	_          service.ServiceDelegate = &Service{}
+	tAdder     *Ticker
+	tProcessor *Ticker
+	Queue      *client.ServiceClient
 )
 
 // Funcs required for ServiceDelegate
@@ -28,13 +29,18 @@ func (s *Service) MethodCompleted(m string, d int64, err error) {}
 func (s *Service) Registered(service *service.Service) {}
 
 func (s *Service) Started(service *service.Service) {
-	t = NewTicker(s.addFeed, time.Second*10)
-	go t.Run()
-	t.Start <- true
+	tAdder = NewTicker(s.addFeed, time.Second*10)
+	go tAdder.Run()
+	tAdder.Start <- true
+
+	tProcessor = NewTicker(s.processFeed, time.Second*10)
+	go tProcessor.Run()
+	tProcessor.Start <- true
 }
 
 func (s *Service) Stopped(service *service.Service) {
-	t.ProcessCommand(&skytypes.ClockCommand{Command: "stop"})
+	tAdder.ProcessCommand(&skytypes.ClockCommand{Command: "stop"})
+	tProcessor.ProcessCommand(&skytypes.ClockCommand{Command: "stop"})
 }
 
 func (s *Service) Unregistered(service *service.Service) {}
@@ -42,12 +48,21 @@ func (s *Service) Unregistered(service *service.Service) {}
 // Service funcs
 
 func (s *Service) FeedAdder(ri *skynet.RequestInfo, in *skytypes.ClockCommand, out *skytypes.ClockResult) (err error) {
-	return t.ProcessCommand(in)
+	return tAdder.ProcessCommand(in)
 }
 
 func (s *Service) addFeed() (err error) {
 	id := &skytypes.ObjectId{}
 	return Queue.SendOnce(nil, "AddFeed", skytypes.Null, id)
+}
+
+func (s *Service) FeedProcessor(ri *skynet.RequestInfo, in *skytypes.ClockCommand, out *skytypes.NullType) (err error) {
+	return tProcessor.ProcessCommand(in)
+}
+
+func (s *Service) processFeed() (err error) {
+	id := &skytypes.ObjectId{}
+	return Queue.SendOnce(nil, "ProcessFeed", skytypes.Null, id)
 }
 
 // Main
