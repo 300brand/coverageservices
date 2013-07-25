@@ -31,11 +31,11 @@ func (s *Service) Registered(service *service.Service) {}
 func (s *Service) Started(service *service.Service) {
 	tAdder = NewTicker(s.addFeed, time.Second*10)
 	go tAdder.Run()
-	tAdder.Start <- true
+	//tAdder.Start <- true
 
 	tProcessor = NewTicker(s.processFeed, time.Second*10)
 	go tProcessor.Run()
-	tProcessor.Start <- true
+	//tProcessor.Start <- true
 }
 
 func (s *Service) Stopped(service *service.Service) {
