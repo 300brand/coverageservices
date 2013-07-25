@@ -75,7 +75,7 @@ func main() {
 
 	sc, _ := skynet.GetServiceConfig()
 	sc.Name = ServiceName
-	sc.Region = "Storage"
+	sc.Region = "Processing"
 	sc.Version = "1"
 
 	s := service.CreateService(&Service{}, sc)
