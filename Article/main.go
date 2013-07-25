@@ -2,6 +2,8 @@ package main
 
 import (
 	"git.300brand.com/coverage"
+	"git.300brand.com/coverage/article/body"
+	"git.300brand.com/coverage/article/lexer"
 	"git.300brand.com/coverage/downloader"
 	"git.300brand.com/coverage/skytypes"
 	"github.com/skynetservices/skynet"
@@ -33,15 +35,25 @@ func (s *Service) Unregistered(service *service.Service)        {}
 
 func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *skytypes.NullType) (err error) {
 	go func(ri *skynet.RequestInfo, a *coverage.Article) {
-		log.Printf("%s[%s] Downloading", a.ID.Hex(), a.URL)
 		if err := downloader.Article(a); err != nil {
 			log.Printf("%s[%s] Error downloading: %s", a.ID.Hex(), a.URL, err)
 			return
 		}
-		log.Printf("%s[%s] Saving", a.ID.Hex(), a.URL)
-		if err := StorageWriter.SendOnce(ri, "SaveArticle", a, a); err != nil {
-			log.Printf("%s[%s] Error saving: %s", a.ID.Hex(), a.URL, err)
+
+		// If any step fails along the way, save the article's state
+		defer func() {
+			if err := StorageWriter.SendOnce(ri, "SaveArticle", a, a); err != nil {
+				log.Printf("%s[%s] Error saving: %s", a.ID.Hex(), a.URL, err)
+			}
+		}()
+
+		if err := body.SetBody(a); err != nil {
+			log.Printf("%s[%s] Error setting body: %s", a.ID.Hex(), a.URL, err)
+			return
 		}
+
+		a.Text.Words.All = lexer.Words(a.Text.Body.Text)
+		a.Text.Words.Keywords = lexer.Keywords(a.Text.Body.Text)
 	}(ri, in)
 	return
 }
