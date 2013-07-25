@@ -17,10 +17,10 @@ type Service struct{}
 const ServiceName = "Queue"
 
 var (
-	_              service.ServiceDelegate = &Service{}
-	q              *idqueue.IdQueue
-	FeedDownloader *client.ServiceClient
-	StorageReader  *client.ServiceClient
+	_             service.ServiceDelegate = &Service{}
+	q             *idqueue.IdQueue
+	Feed          *client.ServiceClient
+	StorageReader *client.ServiceClient
 )
 
 // Funcs required for ServiceDelegate
@@ -80,7 +80,7 @@ func (s *Service) ProcessFeed(ri *skynet.RequestInfo, in *skytypes.NullType, out
 	if out.Id, err = q.Unshift(); err != nil {
 		return
 	}
-	return FeedDownloader.SendOnce(ri, "Download", out, skytypes.Null)
+	return Feed.SendOnce(ri, "Process", out, skytypes.Null)
 }
 
 // Main
@@ -93,7 +93,7 @@ func main() {
 	c := client.NewClient(cc)
 
 	StorageReader = c.GetService("StorageReader", "", "", "")
-	FeedDownloader = c.GetService("FeedDownloader", "", "", "")
+	Feed = c.GetService("Feed", "", "", "")
 
 	sc, _ := skynet.GetServiceConfig()
 	sc.Name = ServiceName
