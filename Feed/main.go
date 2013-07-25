@@ -42,21 +42,21 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *sk
 
 		log.Printf("%s[%s] Downloading", f.ID, f.URL)
 		if err := downloader.Feed(f); err != nil {
-			log.Printf("%s[%s] Error downloading: %s", f.ID, f.URL, err)
+			log.Printf("%s[%s] Error downloading: %s", f.ID.Hex(), f.URL, err)
 			return
 		}
 		log.Printf("")
 
 		if err := feed.Process(f); err != nil {
-			log.Printf("%s[%s] Error parsing: %s", f.ID, f.URL, err)
+			log.Printf("%s[%s] Error parsing: %s", f.ID.Hex(), f.URL, err)
 			return
 		}
 
-		log.Printf("%s[%s] New Articles: %d", f.ID, f.URL, len(f.Articles))
+		log.Printf("%s[%s] New Articles: %d", f.ID.Hex(), f.URL, len(f.Articles))
 
 		// TODO Send each article off for processing
 
-		log.Printf("%s[%s] Completed", f.ID, f.URL)
+		log.Printf("%s[%s] Completed", f.ID.Hex(), f.URL)
 	}(f)
 	return
 }
