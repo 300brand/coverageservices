@@ -17,6 +17,7 @@ const ServiceName = "Feed"
 
 var (
 	_             service.ServiceDelegate = &Service{}
+	Article       *client.ServiceClient
 	StorageReader *client.ServiceClient
 	StorageWriter *client.ServiceClient
 )
@@ -37,27 +38,21 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *sk
 	if err = StorageReader.Send(ri, "GetFeed", in, f); err != nil {
 		return
 	}
-	go func(f *coverage.Feed) {
+	go func(ri *skynet.RequestInfo, f *coverage.Feed) {
 		defer StorageWriter.SendOnce(ri, "SaveFeed", f, f)
 
-		log.Printf("%s[%s] Downloading", f.ID, f.URL)
 		if err := downloader.Feed(f); err != nil {
 			log.Printf("%s[%s] Error downloading: %s", f.ID.Hex(), f.URL, err)
 			return
 		}
-		log.Printf("")
-
 		if err := feed.Process(f); err != nil {
 			log.Printf("%s[%s] Error parsing: %s", f.ID.Hex(), f.URL, err)
 			return
 		}
-
-		log.Printf("%s[%s] New Articles: %d", f.ID.Hex(), f.URL, len(f.Articles))
-
-		// TODO Send each article off for processing
-
-		log.Printf("%s[%s] Completed", f.ID.Hex(), f.URL)
-	}(f)
+		for _, a := range f.Articles {
+			Article.SendOnce(ri, "Process", a, skytypes.Null)
+		}
+	}(ri, f)
 	return
 }
 
@@ -70,6 +65,7 @@ func main() {
 	cc, _ := skynet.GetClientConfig()
 	c := client.NewClient(cc)
 
+	Article = c.GetService("Article", "", "", "")
 	StorageReader = c.GetService("StorageReader", "", "", "")
 	StorageWriter = c.GetService("StorageWriter", "", "", "")
 
