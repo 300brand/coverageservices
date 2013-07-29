@@ -53,7 +53,7 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *sk
 		}
 		for _, a := range f.Articles {
 			// Add a 5-15 second delay between article downloads
-			<-time.After((rand.Intn(10) + 5) * time.Second)
+			<-time.After(time.Duration(rand.Int63n(10)+5) * time.Second)
 			Article.SendOnce(ri, "Process", a, skytypes.Null)
 		}
 	}(ri, f)
