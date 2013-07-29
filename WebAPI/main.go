@@ -18,12 +18,14 @@ import (
 
 type Service struct{}
 type RPCManager struct{}
+type RPCSearch struct{}
 
 const ServiceName = "WebAPI"
 
 var (
 	_       service.ServiceDelegate = &Service{}
 	Manager *client.ServiceClient
+	Search  *client.ServiceClient
 
 	jsonrpc  = rpc.NewServer()
 	cmdOnce  = &skytypes.ClockCommand{Command: "once"}
@@ -34,6 +36,7 @@ var (
 func init() {
 	jsonrpc.RegisterCodec(json.NewCodec(), "application/json")
 	jsonrpc.RegisterService(new(RPCManager), "Manager")
+	jsonrpc.RegisterService(new(RPCSearch), "Search")
 }
 
 // Funcs required for ServiceDelegate
@@ -71,6 +74,10 @@ func (m *RPCManager) StopFeeds(r *http.Request, in *skytypes.NullType, out *skyt
 	return Manager.SendOnce(nil, "FeedProcessor", cmdStop, skytypes.Null)
 }
 
+func (m *RPCSearch) Search(r *http.Request, in *skytypes.SearchQuery, out *skytypes.SearchQueryResponse) (err error) {
+	return Search.SendOnce(nil, "Search", in, out)
+}
+
 // Main
 
 func main() {
@@ -82,6 +89,7 @@ func main() {
 	c := client.NewClient(cc)
 
 	Manager = c.GetService("Manager", "", "", "")
+	Search = c.GetService("Search", "", "", "")
 
 	// RPC
 	listener, err := net.Listen("tcp", config.RPCServer.Address)
