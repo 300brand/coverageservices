@@ -27,9 +27,8 @@ func (s *Service) MethodCompleted(m string, d int64, err error) {}
 func (s *Service) Registered(service *service.Service) {}
 
 func (s *Service) Started(service *service.Service) {
-	host, db := config.Mongo.Host, config.Mongo.Database
-	log.Printf("Connecting to MongoDB %s %s", host, db)
-	m = mongo.New(host, db)
+	log.Printf("Connecting to MongoDB %s", config.Mongo.Host)
+	m = mongo.New(config.Mongo.Host)
 	if err := m.Connect(); err != nil {
 		log.Fatalf("Failed to connect to MongoDB: %s", err)
 	}
@@ -46,18 +45,33 @@ func (s *Service) Unregistered(service *service.Service) {}
 // Service funcs
 
 func (s *Service) SaveArticle(ri *skynet.RequestInfo, in *coverage.Article, out *coverage.Article) (err error) {
+	defer func() {
+		*out = *in
+	}()
+
+	if err = m.AddURL(in.URL, in.ID); err != nil {
+		log.Printf("Duplicate URL: %s", in.URL)
+		return
+	}
 	if err = m.UpdateArticle(in); err != nil {
 		return
 	}
-	*out = *in
+	go func(a *coverage.Article) {
+		if err = m.AddKeywords(in); err != nil {
+			log.Printf("Error saving keywords: %s", err)
+		}
+	}(in)
 	return
 }
 
 func (s *Service) SaveFeed(ri *skynet.RequestInfo, in *coverage.Feed, out *coverage.Feed) (err error) {
+	defer func() {
+		*out = *in
+	}()
+
 	if err = m.UpdateFeed(in); err != nil {
 		return
 	}
-	*out = *in
 	return
 }
 
