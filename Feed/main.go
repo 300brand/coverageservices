@@ -9,6 +9,8 @@ import (
 	"github.com/skynetservices/skynet/client"
 	"github.com/skynetservices/skynet/service"
 	"log"
+	"math/rand"
+	"time"
 )
 
 type Service struct{}
@@ -50,6 +52,8 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *sk
 			return
 		}
 		for _, a := range f.Articles {
+			// Add a 5-15 second delay between article downloads
+			<-time.After((rand.Intn(10) + 5) * time.Second)
 			Article.SendOnce(ri, "Process", a, skytypes.Null)
 		}
 	}(ri, f)
