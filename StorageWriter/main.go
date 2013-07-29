@@ -29,6 +29,7 @@ func (s *Service) Registered(service *service.Service) {}
 func (s *Service) Started(service *service.Service) {
 	log.Printf("Connecting to MongoDB %s", config.Mongo.Host)
 	m = mongo.New(config.Mongo.Host)
+	m.Prefix = "A_"
 	if err := m.Connect(); err != nil {
 		log.Fatalf("Failed to connect to MongoDB: %s", err)
 	}
