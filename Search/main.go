@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"git.300brand.com/coverage"
 	"git.300brand.com/coverage/skytypes"
 	"github.com/skynetservices/skynet"
 	"github.com/skynetservices/skynet/client"
@@ -14,6 +16,7 @@ const ServiceName = "Search"
 
 var (
 	_             service.ServiceDelegate = &Service{}
+	Search        *client.ServiceClient
 	StorageReader *client.ServiceClient
 	StorageWriter *client.ServiceClient
 )
@@ -30,6 +33,22 @@ func (s *Service) Unregistered(service *service.Service)        {}
 // Service funcs
 
 func (s *Service) Search(ri *skynet.RequestInfo, in *skytypes.SearchQuery, out *skytypes.SearchQueryResponse) (err error) {
+	if in.Q == "" {
+		return fmt.Errorf("Query cannot be empty")
+	}
+	if in.Dates.Start.After(in.Dates.End) {
+		return fmt.Errorf("Invalid date range: %s > %s", in.Dates.Start, in.Dates.End)
+	}
+
+	cs := &coverage.Search{
+		Q:     in.Q,
+		Dates: in.Dates,
+	}
+
+	if err = StorageWriter.SendOnce(ri, "NewSearch", cs, cs); err != nil {
+		return
+	}
+
 	return
 }
 
@@ -42,6 +61,7 @@ func main() {
 	cc, _ := skynet.GetClientConfig()
 	c := client.NewClient(cc)
 
+	Search = c.GetService("Search", "", "", "")
 	StorageReader = c.GetService("StorageReader", "", "", "")
 	StorageWriter = c.GetService("StorageWriter", "", "", "")
 

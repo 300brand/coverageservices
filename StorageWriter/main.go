@@ -6,6 +6,7 @@ import (
 	"git.300brand.com/coverage/storage/mongo"
 	"github.com/skynetservices/skynet"
 	"github.com/skynetservices/skynet/service"
+	"labix.org/v2/mgo/bson"
 	"log"
 )
 
@@ -44,6 +45,12 @@ func (s *Service) Stopped(service *service.Service) {
 func (s *Service) Unregistered(service *service.Service) {}
 
 // Service funcs
+
+func (s *Service) NewSearch(ri *skynet.RequestInfo, in *coverage.Search, out *coverage.Search) (err error) {
+	*out = *in
+	out.Id = bson.NewObjectId()
+	return m.UpdateSearch(out)
+}
 
 func (s *Service) SaveArticle(ri *skynet.RequestInfo, in *coverage.Article, out *coverage.Article) (err error) {
 	defer func() {
