@@ -71,10 +71,10 @@ func (s *Service) Search(ri *skynet.RequestInfo, in *skytypes.SearchQuery, out *
 	var wg sync.WaitGroup
 	for _, ds.Date = range dates {
 		wg.Add(1)
-		go func() {
+		go func(ds skytypes.DateSearch) {
 			StorageWriter.SendOnce(ri, "DateSearch", ds, skytypes.Null)
 			wg.Done()
-		}()
+		}(ds)
 	}
 
 	// Wait for all of the DateSearch calls to finish, then send the
