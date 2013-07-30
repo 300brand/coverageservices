@@ -50,10 +50,6 @@ func (s *Service) Feed(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *cover
 	return m.GetFeed(in.Id, out)
 }
 
-func (s *Service) Keyword(ri *skynet.RequestInfo, in *coverage.KeywordId, out *coverage.Keyword) (err error) {
-	return m.GetKeyword(in, out)
-}
-
 func (s *Service) OldestFeed(ri *skynet.RequestInfo, in *skytypes.ObjectIds, out *coverage.Feed) (err error) {
 	return m.GetOldestFeed(in.Ids, out)
 }

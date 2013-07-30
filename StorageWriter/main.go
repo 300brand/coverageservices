@@ -47,15 +47,8 @@ func (s *Service) Unregistered(service *service.Service) {}
 
 // Service funcs
 
-func (s *Service) AddSearchResults(ri *skynet.RequestInfo, in *skytypes.SearchResultSubset, out *skytypes.NullType) (err error) {
-	results := make([]*coverage.SearchResult, len(in.ArticleIds))
-	for i, a := range in.ArticleIds {
-		results[i] = &coverage.SearchResult{
-			SearchId:  in.Id,
-			ArticleId: a,
-		}
-	}
-	return m.AddSearchResults(in.Id, results)
+func (s *Service) DateSearch(ri *skynet.RequestInfo, in *skytypes.DateSearch, out *skytypes.NullType) (err error) {
+	return m.DateSearch(in.Id, in.Query, in.Date)
 }
 
 func (s *Service) NewSearch(ri *skynet.RequestInfo, in *coverage.Search, out *coverage.Search) (err error) {
