@@ -66,7 +66,7 @@ func (s *Service) Search(ri *skynet.RequestInfo, in *skytypes.SearchQuery, out *
 
 	// Prepare information for the caller
 	out.Id = cs.Id
-	out.Start = time.Now()
+	out.Start = cs.Start
 
 	return
 }

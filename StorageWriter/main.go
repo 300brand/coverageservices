@@ -9,6 +9,7 @@ import (
 	"github.com/skynetservices/skynet/service"
 	"labix.org/v2/mgo/bson"
 	"log"
+	"time"
 )
 
 type Service struct{}
@@ -53,6 +54,7 @@ func (s *Service) DateSearch(ri *skynet.RequestInfo, in *skytypes.DateSearch, ou
 
 func (s *Service) NewSearch(ri *skynet.RequestInfo, in *coverage.Search, out *coverage.Search) (err error) {
 	*out = *in
+	out.Start = time.Now()
 	out.Id = bson.NewObjectId()
 	return m.UpdateSearch(out)
 }
