@@ -42,7 +42,7 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *sky
 
 		// If any step fails along the way, save the article's state
 		defer func() {
-			if err := StorageWriter.SendOnce(ri, "SaveArticle", a, a); err != nil {
+			if err := StorageWriter.SendOnce(ri, "Article", a, a); err != nil {
 				log.Printf("%s[%s] Error saving: %s", a.ID.Hex(), a.URL, err)
 			}
 		}()
