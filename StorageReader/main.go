@@ -46,8 +46,12 @@ func (s *Service) Unregistered(service *service.Service) {}
 
 // Service funcs
 
-func (s *Service) GetFeed(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *coverage.Feed) (err error) {
+func (s *Service) Feed(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *coverage.Feed) (err error) {
 	return m.GetFeed(in.Id, out)
+}
+
+func (s *Service) Keyword(ri *skynet.RequestInfo, in *coverage.KeywordId, out *coverage.Keyword) (err error) {
+	return m.GetKeyword(in, out)
 }
 
 func (s *Service) OldestFeed(ri *skynet.RequestInfo, in *skytypes.ObjectIds, out *coverage.Feed) (err error) {

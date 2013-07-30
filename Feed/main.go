@@ -37,11 +37,11 @@ func (s *Service) Unregistered(service *service.Service)        {}
 
 func (s *Service) Process(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *skytypes.NullType) (err error) {
 	f := &coverage.Feed{}
-	if err = StorageReader.Send(ri, "GetFeed", in, f); err != nil {
+	if err = StorageReader.Send(ri, "Feed", in, f); err != nil {
 		return
 	}
 	go func(ri *skynet.RequestInfo, f *coverage.Feed) {
-		defer StorageWriter.SendOnce(ri, "SaveFeed", f, f)
+		defer StorageWriter.SendOnce(ri, "Feed", f, f)
 
 		if err := downloader.Feed(f); err != nil {
 			log.Printf("%s[%s] Error downloading: %s", f.ID.Hex(), f.URL, err)

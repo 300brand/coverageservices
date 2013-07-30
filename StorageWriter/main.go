@@ -3,6 +3,7 @@ package main
 import (
 	"git.300brand.com/coverage"
 	"git.300brand.com/coverage/config"
+	"git.300brand.com/coverage/skytypes"
 	"git.300brand.com/coverage/storage/mongo"
 	"github.com/skynetservices/skynet"
 	"github.com/skynetservices/skynet/service"
@@ -46,13 +47,24 @@ func (s *Service) Unregistered(service *service.Service) {}
 
 // Service funcs
 
+func (s *Service) AddSearchResults(ri *skynet.RequestInfo, in *skytypes.SearchResultSubset, out *skytypes.NullType) (err error) {
+	results := make([]*coverage.SearchResult, len(in.ArticleIds))
+	for i, a := range in.ArticleIds {
+		results[i] = &coverage.SearchResult{
+			SearchId:  in.Id,
+			ArticleId: a,
+		}
+	}
+	return m.AddSearchResults(in.Id, results)
+}
+
 func (s *Service) NewSearch(ri *skynet.RequestInfo, in *coverage.Search, out *coverage.Search) (err error) {
 	*out = *in
 	out.Id = bson.NewObjectId()
 	return m.UpdateSearch(out)
 }
 
-func (s *Service) SaveArticle(ri *skynet.RequestInfo, in *coverage.Article, out *coverage.Article) (err error) {
+func (s *Service) Article(ri *skynet.RequestInfo, in *coverage.Article, out *coverage.Article) (err error) {
 	defer func() {
 		*out = *in
 	}()
@@ -72,7 +84,7 @@ func (s *Service) SaveArticle(ri *skynet.RequestInfo, in *coverage.Article, out 
 	return
 }
 
-func (s *Service) SaveFeed(ri *skynet.RequestInfo, in *coverage.Feed, out *coverage.Feed) (err error) {
+func (s *Service) Feed(ri *skynet.RequestInfo, in *coverage.Feed, out *coverage.Feed) (err error) {
 	defer func() {
 		*out = *in
 	}()
