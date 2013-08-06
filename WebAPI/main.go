@@ -1,6 +1,7 @@
 package main
 
 import (
+	"git.300brand.com/coverage"
 	"git.300brand.com/coverage/config"
 	"git.300brand.com/coverage/skytypes"
 	"github.com/gorilla/handlers"
@@ -17,15 +18,17 @@ import (
 )
 
 type Service struct{}
+type RPCArticle struct{}
 type RPCManager struct{}
 type RPCSearch struct{}
 
 const ServiceName = "WebAPI"
 
 var (
-	_       service.ServiceDelegate = &Service{}
-	Manager *client.ServiceClient
-	Search  *client.ServiceClient
+	_             service.ServiceDelegate = &Service{}
+	Manager       *client.ServiceClient
+	Search        *client.ServiceClient
+	StorageReader *client.ServiceClient
 
 	jsonrpc  = rpc.NewServer()
 	cmdOnce  = &skytypes.ClockCommand{Command: "once"}
@@ -35,6 +38,7 @@ var (
 
 func init() {
 	jsonrpc.RegisterCodec(json.NewCodec(), "application/json")
+	jsonrpc.RegisterService(new(RPCArticle), "Article")
 	jsonrpc.RegisterService(new(RPCManager), "Manager")
 	jsonrpc.RegisterService(new(RPCSearch), "Search")
 }
@@ -49,6 +53,10 @@ func (s *Service) Stopped(service *service.Service)             {}
 func (s *Service) Unregistered(service *service.Service)        {}
 
 // Service funcs
+
+func (m *RPCArticle) Get(r *http.Request, in *skytypes.ObjectId, out *coverage.Article) (err error) {
+	return StorageReader.Send(nil, "Article", in, out)
+}
 
 func (m *RPCManager) AddOneFeed(r *http.Request, in *skytypes.NullType, out *skytypes.NullType) (err error) {
 	return Manager.SendOnce(nil, "FeedAdder", cmdOnce, skytypes.Null)
@@ -90,6 +98,7 @@ func main() {
 
 	Manager = c.GetService("Manager", "", "", "")
 	Search = c.GetService("Search", "", "", "")
+	StorageReader = c.GetService("StorageReader", "", "", "")
 
 	// RPC
 	listener, err := net.Listen("tcp", config.RPCServer.Address)
