@@ -1,13 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"git.300brand.com/coverage"
 	"git.300brand.com/coverage/skytypes"
 	"github.com/skynetservices/skynet"
 	"github.com/skynetservices/skynet/client"
 	"github.com/skynetservices/skynet/service"
+	"labix.org/v2/mgo/bson"
 	"log"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -34,9 +38,22 @@ func (s *Service) Unregistered(service *service.Service)        {}
 
 // Service funcs
 
-func (s *Service) NotifyComplete(ri *skynet.RequestInfo, in *skytypes.SearchQuery, out *skytypes.NullType) (err error) {
-	// TODO Gather full articles and send to the notification URL
-	log.Printf("Sending notifacation to %s", in.Notify)
+func (s *Service) NotifyComplete(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *skytypes.NullType) (err error) {
+	info := &coverage.Search{}
+	if err = StorageReader.Send(ri, "Search", in, info); err != nil {
+		return
+	}
+
+	buf := new(bytes.Buffer)
+	enc := json.NewEncoder(buf)
+	if err = enc.Encode(info); err != nil {
+		return
+	}
+
+	if _, err = http.Post(info.Notify, "application/json", buf); err != nil {
+		return
+	}
+
 	return
 }
 
@@ -56,6 +73,7 @@ func (s *Service) Search(ri *skynet.RequestInfo, in *skytypes.SearchQuery, out *
 	}
 
 	cs := &coverage.Search{
+		Notify:   in.Notify,
 		Q:        in.Q,
 		Dates:    in.Dates,
 		DaysLeft: len(dates),
@@ -79,10 +97,12 @@ func (s *Service) Search(ri *skynet.RequestInfo, in *skytypes.SearchQuery, out *
 
 	// Wait for all of the DateSearch calls to finish, then send the
 	// notification of completeness
-	go func(ri skynet.RequestInfo, q skytypes.SearchQuery) {
+	go func(ri skynet.RequestInfo, id bson.ObjectId) {
 		wg.Wait()
-		Search.SendOnce(&ri, "NotifyComplete", q, skytypes.Null)
-	}(*ri, *in)
+		if err := Search.SendOnce(&ri, "NotifyComplete", skytypes.ObjectId{id}, skytypes.Null); err != nil {
+			log.Print(err)
+		}
+	}(*ri, cs.Id)
 
 	// Prepare information for the caller
 	out.Id = cs.Id
