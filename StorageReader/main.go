@@ -54,6 +54,10 @@ func (s *Service) OldestFeed(ri *skynet.RequestInfo, in *skytypes.ObjectIds, out
 	return m.GetOldestFeed(in.Ids, out)
 }
 
+func (s *Service) Search(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *coverage.Search) (err error) {
+	return m.GetSearch(in.Id, out)
+}
+
 // Main
 
 func main() {
