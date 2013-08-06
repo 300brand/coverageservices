@@ -46,6 +46,10 @@ func (s *Service) Unregistered(service *service.Service) {}
 
 // Service funcs
 
+func (s *Service) Article(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *coverage.Article) (err error) {
+	return m.GetArticle(in.Id, out)
+}
+
 func (s *Service) Feed(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *coverage.Feed) (err error) {
 	return m.GetFeed(in.Id, out)
 }
