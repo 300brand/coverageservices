@@ -10,9 +10,12 @@ import (
 	"github.com/skynetservices/skynet/client"
 	"github.com/skynetservices/skynet/service"
 	"log"
+	"runtime"
 )
 
-type Service struct{}
+type Service struct {
+	Config *skynet.ServiceConfig
+}
 
 const ServiceName = "Queue"
 
@@ -20,6 +23,7 @@ var (
 	_             service.ServiceDelegate = &Service{}
 	q             *idqueue.IdQueue
 	Feed          *client.ServiceClient
+	Stats         *client.ServiceClient
 	StorageReader *client.ServiceClient
 )
 
@@ -27,7 +31,17 @@ var (
 
 func (s *Service) MethodCalled(m string) {}
 
-func (s *Service) MethodCompleted(m string, d int64, err error) {}
+func (s *Service) MethodCompleted(m string, d int64, err error) {
+	stat := skytypes.Stat{
+		Config:     s.Config,
+		Name:       m,
+		Nanos:      d,
+		Error:      err,
+		Goroutines: runtime.NumGoroutine(),
+	}
+	runtime.ReadMemStats(&stat.Mem)
+	Stats.SendOnce(nil, "Completed", stat, skytypes.Null)
+}
 
 func (s *Service) Registered(service *service.Service) {
 	q = &idqueue.IdQueue{
@@ -92,15 +106,16 @@ func main() {
 	cc, _ := skynet.GetClientConfig()
 	c := client.NewClient(cc)
 
-	StorageReader = c.GetService("StorageReader", "", "", "")
 	Feed = c.GetService("Feed", "", "", "")
+	Stats = c.GetService("Stats", "", "", "")
+	StorageReader = c.GetService("StorageReader", "", "", "")
 
 	sc, _ := skynet.GetServiceConfig()
 	sc.Name = ServiceName
 	sc.Region = "Management"
 	sc.Version = "1"
 
-	s := service.CreateService(&Service{}, sc)
+	s := service.CreateService(&Service{sc}, sc)
 	defer s.Shutdown()
 
 	s.Start(true).Wait()
