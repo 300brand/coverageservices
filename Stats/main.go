@@ -60,23 +60,22 @@ func (s *Service) Increment(ri *skynet.RequestInfo, stat *skytypes.Stat, out *sk
 }
 
 func (s *Service) Completed(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
-	log.Printf("Stat Info: %v", stat)
 	rate := float64(1)
 	base := statJoin(statBase(stat), "MethodCompleted")
-	client.Increment(statJoin(base, "count"), 1, rate)
-	client.Timing(statJoin(base, "duration"), int(time.Duration(stat.Nanos)/time.Millisecond), rate)
+	client.Increment(statJoin(base, "Calls"), 1, rate)
 	if stat.Error != nil {
-		client.Increment(statJoin(base, "errors"), 1, rate)
+		client.Increment(statJoin(base, "Errors"), 1, rate)
 	}
-	client.Gauge(statJoin(base, "alloc"), int(stat.Mem.Alloc), rate)
-	client.Gauge(statJoin(base, "totalAlloc"), int(stat.Mem.TotalAlloc), rate)
-	client.Gauge(statJoin(base, "mallocs"), int(stat.Mem.Mallocs), rate)
-	client.Gauge(statJoin(base, "heapAlloc"), int(stat.Mem.HeapAlloc), rate)
-	client.Gauge(statJoin(base, "heapSys"), int(stat.Mem.HeapSys), rate)
-	client.Gauge(statJoin(base, "heapInuse"), int(stat.Mem.HeapInuse), rate)
-	client.Gauge(statJoin(base, "stackSys"), int(stat.Mem.StackSys), rate)
-	client.Gauge(statJoin(base, "stackInuse"), int(stat.Mem.StackInuse), rate)
-	client.Gauge(statJoin(base, "numGC"), int(stat.Mem.NumGC), rate)
+	client.Timing(statJoin(base, "Duration"), int(time.Duration(stat.Nanos)/time.Millisecond), rate)
+	client.Gauge(statJoin(base, "Alloc"), int(stat.Mem.Alloc), rate)
+	client.Gauge(statJoin(base, "TotalAlloc"), int(stat.Mem.TotalAlloc), rate)
+	client.Gauge(statJoin(base, "Mallocs"), int(stat.Mem.Mallocs), rate)
+	client.Gauge(statJoin(base, "HeapAlloc"), int(stat.Mem.HeapAlloc), rate)
+	client.Gauge(statJoin(base, "HeapSys"), int(stat.Mem.HeapSys), rate)
+	client.Gauge(statJoin(base, "HeapInuse"), int(stat.Mem.HeapInuse), rate)
+	client.Gauge(statJoin(base, "StackSys"), int(stat.Mem.StackSys), rate)
+	client.Gauge(statJoin(base, "StackInuse"), int(stat.Mem.StackInuse), rate)
+	client.Gauge(statJoin(base, "NumGC"), int(stat.Mem.NumGC), rate)
 	return
 }
 
