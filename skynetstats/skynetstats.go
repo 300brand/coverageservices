@@ -48,7 +48,7 @@ func Start(serviceConfig *skynet.ServiceConfig, statsClient *client.ServiceClien
 				return
 			}
 		}
-	}(sc)
+	}(serviceConfig)
 }
 
 func Stop() {

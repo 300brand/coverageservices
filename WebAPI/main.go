@@ -4,6 +4,7 @@ import (
 	"git.300brand.com/coverage"
 	"git.300brand.com/coverage/config"
 	"git.300brand.com/coverage/skytypes"
+	"git.300brand.com/coverageservices/skynetstats"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/rpc"
 	"github.com/gorilla/rpc/json"
@@ -14,7 +15,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"runtime"
 	"time"
 )
 
@@ -52,24 +52,20 @@ func init() {
 func (s *Service) MethodCalled(m string) {}
 
 func (s *Service) MethodCompleted(m string, d int64, err error) {
-	stat := skytypes.Stat{
-		Config:     s.Config,
-		Name:       m,
-		Nanos:      d,
-		Error:      err,
-		Goroutines: runtime.NumGoroutine(),
-	}
-	runtime.ReadMemStats(&stat.Mem)
-	Stats.SendOnce(nil, "Completed", stat, skytypes.Null)
+	skynetstats.Completed(m, d, err)
 }
 
-func (s *Service) Registered(service *service.Service) {}
+func (s *Service) Registered(service *service.Service) {
+	skynetstats.Start(s.Config, Stats)
+}
 
 func (s *Service) Started(service *service.Service) {}
 
 func (s *Service) Stopped(service *service.Service) {}
 
-func (s *Service) Unregistered(service *service.Service) {}
+func (s *Service) Unregistered(service *service.Service) {
+	skynetstats.Stop()
+}
 
 // Service funcs
 

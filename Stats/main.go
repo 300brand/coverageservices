@@ -113,6 +113,11 @@ func main() {
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 	log.SetPrefix(ServiceName + " ")
 
+	cc, _ := skynet.GetClientConfig()
+	c := client.NewClient(cc)
+
+	Stats = c.GetService("Stats", "", "", "")
+
 	sc, _ := skynet.GetServiceConfig()
 	sc.Name = ServiceName
 	sc.Region = "Stats"

@@ -5,12 +5,12 @@ import (
 	"git.300brand.com/coverage/config"
 	"git.300brand.com/coverage/skytypes"
 	"git.300brand.com/coverage/storage/mongo"
+	"git.300brand.com/coverageservices/skynetstats"
 	"github.com/skynetservices/skynet"
 	"github.com/skynetservices/skynet/client"
 	"github.com/skynetservices/skynet/service"
 	"labix.org/v2/mgo/bson"
 	"log"
-	"runtime"
 	"time"
 )
 
@@ -31,18 +31,12 @@ var (
 func (s *Service) MethodCalled(m string) {}
 
 func (s *Service) MethodCompleted(m string, d int64, err error) {
-	stat := skytypes.Stat{
-		Config:     s.Config,
-		Name:       m,
-		Nanos:      d,
-		Error:      err,
-		Goroutines: runtime.NumGoroutine(),
-	}
-	runtime.ReadMemStats(&stat.Mem)
-	Stats.SendOnce(nil, "Completed", stat, skytypes.Null)
+	skynetstats.Completed(m, d, err)
 }
 
-func (s *Service) Registered(service *service.Service) {}
+func (s *Service) Registered(service *service.Service) {
+	skynetstats.Start(s.Config, Stats)
+}
 
 func (s *Service) Started(service *service.Service) {
 	log.Printf("Connecting to MongoDB %s", config.Mongo.Host)
@@ -59,7 +53,9 @@ func (s *Service) Stopped(service *service.Service) {
 	m.Close()
 }
 
-func (s *Service) Unregistered(service *service.Service) {}
+func (s *Service) Unregistered(service *service.Service) {
+	skynetstats.Stop()
+}
 
 // Service funcs
 
