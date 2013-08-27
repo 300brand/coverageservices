@@ -6,10 +6,13 @@ import (
 	"github.com/skynetservices/skynet/client"
 	"github.com/skynetservices/skynet/service"
 	"log"
+	"runtime"
 	"time"
 )
 
-type Service struct{}
+type Service struct {
+	Config *skynet.ServiceConfig
+}
 
 const ServiceName = "Manager"
 
@@ -18,14 +21,24 @@ var (
 	tAdder     *Ticker
 	tProcessor *Ticker
 	Queue      *client.ServiceClient
+	Stats      *client.ServiceClient
 )
 
 // Funcs required for ServiceDelegate
 
 func (s *Service) MethodCalled(m string) {}
 
-func (s *Service) MethodCompleted(m string, d int64, err error) {}
-
+func (s *Service) MethodCompleted(m string, d int64, err error) {
+	stat := skytypes.Stat{
+		Config:     s.Config,
+		Name:       m,
+		Nanos:      d,
+		Error:      err,
+		Goroutines: runtime.NumGoroutine(),
+	}
+	runtime.ReadMemStats(&stat.Mem)
+	Stats.SendOnce(nil, "Completed", stat, skytypes.Null)
+}
 func (s *Service) Registered(service *service.Service) {}
 
 func (s *Service) Started(service *service.Service) {
@@ -81,7 +94,7 @@ func main() {
 	sc.Region = "Management"
 	sc.Version = "1"
 
-	s := service.CreateService(&Service{}, sc)
+	s := service.CreateService(&Service{sc}, sc)
 	defer s.Shutdown()
 
 	s.Start(true).Wait()
