@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"git.300brand.com/coverage/config"
 	"git.300brand.com/coverage/skytypes"
+	"git.300brand.com/coverageservices/skynetstats"
 	"github.com/cyberdelia/statsd"
 	"github.com/skynetservices/skynet"
 	"github.com/skynetservices/skynet/service"
@@ -19,8 +20,8 @@ const (
 )
 
 var (
-	_      service.ServiceDelegate = &Service{}
-	client *statsd.Client
+	_     service.ServiceDelegate = &Service{}
+	stats *statsd.stats
 )
 
 // Funcs required for ServiceDelegate
@@ -32,7 +33,7 @@ func (s *Service) MethodCompleted(m string, d int64, err error) {}
 func (s *Service) Registered(service *service.Service) {
 	log.Printf("Connecting to %s", config.StatsdServer.Address)
 	var err error
-	if client, err = statsd.Dial(config.StatsdServer.Address); err != nil {
+	if stats, err = statsd.Dial(config.StatsdServer.Address); err != nil {
 		log.Fatalf("Could not connect to Statsd Server: %s", err)
 	}
 }
@@ -40,7 +41,7 @@ func (s *Service) Registered(service *service.Service) {
 func (s *Service) Started(service *service.Service) {}
 
 func (s *Service) Stopped(service *service.Service) {
-	client.Close()
+	stats.Close()
 }
 
 func (s *Service) Unregistered(service *service.Service) {}
@@ -61,28 +62,39 @@ func (s *Service) Increment(ri *skynet.RequestInfo, stat *skytypes.Stat, out *sk
 
 func (s *Service) Completed(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
 	rate := float64(1)
-	base := statJoin(statBase(stat), "MethodCompleted")
-	client.Increment(statJoin(base, "Calls"), 1, rate)
+	base := statJoin(statBase(stat), "Completed")
+	stats.Increment(statJoin(base, "Calls"), 1, rate)
 	if stat.Error != nil {
-		client.Increment(statJoin(base, "Errors"), 1, rate)
+		stats.Increment(statJoin(base, "Errors"), 1, rate)
 	}
-	client.Timing(statJoin(base, "Duration"), int(time.Duration(stat.Nanos)/time.Millisecond), rate)
-	client.Gauge(statJoin(base, "Alloc"), int(stat.Mem.Alloc), rate)
-	client.Gauge(statJoin(base, "TotalAlloc"), int(stat.Mem.TotalAlloc), rate)
-	client.Gauge(statJoin(base, "Mallocs"), int(stat.Mem.Mallocs), rate)
-	client.Gauge(statJoin(base, "HeapAlloc"), int(stat.Mem.HeapAlloc), rate)
-	client.Gauge(statJoin(base, "HeapSys"), int(stat.Mem.HeapSys), rate)
-	client.Gauge(statJoin(base, "HeapInuse"), int(stat.Mem.HeapInuse), rate)
-	client.Gauge(statJoin(base, "StackSys"), int(stat.Mem.StackSys), rate)
-	client.Gauge(statJoin(base, "StackInuse"), int(stat.Mem.StackInuse), rate)
-	client.Gauge(statJoin(base, "NumGC"), int(stat.Mem.NumGC), rate)
+	stats.Timing(statJoin(base, "Duration"), int(time.Duration(stat.Nanos)/time.Millisecond), rate)
+	return
+}
+
+func (s *Service) Resources(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
+	rate := float64(1)
+	base := statBase(stat)
+	stats.Gauge(statJoin(base, "Alloc"), int(stat.Mem.Alloc), rate)
+	stats.Gauge(statJoin(base, "TotalAlloc"), int(stat.Mem.TotalAlloc), rate)
+	stats.Gauge(statJoin(base, "Mallocs"), int(stat.Mem.Mallocs), rate)
+	stats.Gauge(statJoin(base, "HeapAlloc"), int(stat.Mem.HeapAlloc), rate)
+	stats.Gauge(statJoin(base, "HeapSys"), int(stat.Mem.HeapSys), rate)
+	stats.Gauge(statJoin(base, "HeapInuse"), int(stat.Mem.HeapInuse), rate)
+	stats.Gauge(statJoin(base, "StackSys"), int(stat.Mem.StackSys), rate)
+	stats.Gauge(statJoin(base, "StackInuse"), int(stat.Mem.StackInuse), rate)
+	stats.Gauge(statJoin(base, "NumGC"), int(stat.Mem.NumGC), rate)
 	return
 }
 
 // Support funcs
 
-func statBase(stat *skytypes.Stat) string {
-	return fmt.Sprintf("%s.%s.%s.%s", stat.Config.Name, stat.Name, stat.Config.Version, stat.Config.Region)
+func statBase(stat *skytypes.Stat) (s string) {
+	if stat.Name == "" {
+		s = fmt.Sprintf("%s.%s.%s", stat.Config.Name, stat.Config.Version, stat.Config.Region)
+	} else {
+		s = fmt.Sprintf("%s.%s.%s.%s", stat.Config.Name, stat.Name, stat.Config.Version, stat.Config.Region)
+	}
+	return
 }
 
 func statJoin(paths ...string) string {
