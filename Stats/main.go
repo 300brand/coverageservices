@@ -7,21 +7,26 @@ import (
 	"git.300brand.com/coverageservices/skynetstats"
 	"github.com/cyberdelia/statsd"
 	"github.com/skynetservices/skynet"
+	"github.com/skynetservices/skynet/client"
 	"github.com/skynetservices/skynet/service"
 	"log"
 	"strings"
 	"time"
 )
 
-type Service struct{}
+type Service struct {
+	Config *skynet.ServiceConfig
+}
 
 const (
 	ServiceName = "Stats"
+	Rate        = float64(1)
 )
 
 var (
 	_     service.ServiceDelegate = &Service{}
-	stats *statsd.stats
+	stats *statsd.Client
+	Stats *client.ServiceClient
 )
 
 // Funcs required for ServiceDelegate
@@ -36,6 +41,7 @@ func (s *Service) Registered(service *service.Service) {
 	if stats, err = statsd.Dial(config.StatsdServer.Address); err != nil {
 		log.Fatalf("Could not connect to Statsd Server: %s", err)
 	}
+	skynetstats.Start(s.Config, Stats)
 }
 
 func (s *Service) Started(service *service.Service) {}
@@ -44,7 +50,9 @@ func (s *Service) Stopped(service *service.Service) {
 	stats.Close()
 }
 
-func (s *Service) Unregistered(service *service.Service) {}
+func (s *Service) Unregistered(service *service.Service) {
+	skynetstats.Stop()
+}
 
 // Service funcs
 
@@ -61,28 +69,26 @@ func (s *Service) Increment(ri *skynet.RequestInfo, stat *skytypes.Stat, out *sk
 }
 
 func (s *Service) Completed(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
-	rate := float64(1)
 	base := statJoin(statBase(stat), "Completed")
-	stats.Increment(statJoin(base, "Calls"), 1, rate)
+	stats.Increment(statJoin(base, "Calls"), 1, Rate)
 	if stat.Error != nil {
-		stats.Increment(statJoin(base, "Errors"), 1, rate)
+		stats.Increment(statJoin(base, "Errors"), 1, Rate)
 	}
-	stats.Timing(statJoin(base, "Duration"), int(time.Duration(stat.Nanos)/time.Millisecond), rate)
+	stats.Timing(statJoin(base, "Duration"), int(time.Duration(stat.Nanos)/time.Millisecond), Rate)
 	return
 }
 
 func (s *Service) Resources(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
-	rate := float64(1)
 	base := statBase(stat)
-	stats.Gauge(statJoin(base, "Alloc"), int(stat.Mem.Alloc), rate)
-	stats.Gauge(statJoin(base, "TotalAlloc"), int(stat.Mem.TotalAlloc), rate)
-	stats.Gauge(statJoin(base, "Mallocs"), int(stat.Mem.Mallocs), rate)
-	stats.Gauge(statJoin(base, "HeapAlloc"), int(stat.Mem.HeapAlloc), rate)
-	stats.Gauge(statJoin(base, "HeapSys"), int(stat.Mem.HeapSys), rate)
-	stats.Gauge(statJoin(base, "HeapInuse"), int(stat.Mem.HeapInuse), rate)
-	stats.Gauge(statJoin(base, "StackSys"), int(stat.Mem.StackSys), rate)
-	stats.Gauge(statJoin(base, "StackInuse"), int(stat.Mem.StackInuse), rate)
-	stats.Gauge(statJoin(base, "NumGC"), int(stat.Mem.NumGC), rate)
+	stats.Gauge(statJoin(base, "Alloc"), int(stat.Mem.Alloc), Rate)
+	stats.Gauge(statJoin(base, "TotalAlloc"), int(stat.Mem.TotalAlloc), Rate)
+	stats.Gauge(statJoin(base, "Mallocs"), int(stat.Mem.Mallocs), Rate)
+	stats.Gauge(statJoin(base, "HeapAlloc"), int(stat.Mem.HeapAlloc), Rate)
+	stats.Gauge(statJoin(base, "HeapSys"), int(stat.Mem.HeapSys), Rate)
+	stats.Gauge(statJoin(base, "HeapInuse"), int(stat.Mem.HeapInuse), Rate)
+	stats.Gauge(statJoin(base, "StackSys"), int(stat.Mem.StackSys), Rate)
+	stats.Gauge(statJoin(base, "StackInuse"), int(stat.Mem.StackInuse), Rate)
+	stats.Gauge(statJoin(base, "NumGC"), int(stat.Mem.NumGC), Rate)
 	return
 }
 
@@ -112,7 +118,7 @@ func main() {
 	sc.Region = "Stats"
 	sc.Version = "1"
 
-	s := service.CreateService(&Service{}, sc)
+	s := service.CreateService(&Service{sc}, sc)
 	defer s.Shutdown()
 
 	s.Start(true).Wait()
