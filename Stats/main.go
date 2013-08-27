@@ -69,12 +69,12 @@ func (s *Service) Increment(ri *skynet.RequestInfo, stat *skytypes.Stat, out *sk
 }
 
 func (s *Service) Completed(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
-	base := statJoin(statBase(stat), "Completed")
+	base := statBase(stat)
 	stats.Increment(statJoin(base, "Calls"), 1, Rate)
 	if stat.Error != nil {
 		stats.Increment(statJoin(base, "Errors"), 1, Rate)
 	}
-	stats.Timing(statJoin(base, "Duration"), int(time.Duration(stat.Nanos)/time.Millisecond), Rate)
+	stats.Timing(statJoin(base, "Duration"), int(stat.Nanos/time.Millisecond.Nanoseconds()), Rate)
 	return
 }
 
