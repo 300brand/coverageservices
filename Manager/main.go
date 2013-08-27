@@ -39,6 +39,7 @@ func (s *Service) MethodCompleted(m string, d int64, err error) {
 	runtime.ReadMemStats(&stat.Mem)
 	Stats.SendOnce(nil, "Completed", stat, skytypes.Null)
 }
+
 func (s *Service) Registered(service *service.Service) {}
 
 func (s *Service) Started(service *service.Service) {
