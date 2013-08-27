@@ -89,6 +89,7 @@ func main() {
 	c := client.NewClient(cc)
 
 	Queue = c.GetService("Queue", "", "", "")
+	Stats = c.GetService("Stats", "", "", "")
 
 	sc, _ := skynet.GetServiceConfig()
 	sc.Name = ServiceName

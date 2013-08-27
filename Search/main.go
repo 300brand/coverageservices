@@ -12,29 +12,48 @@ import (
 	"labix.org/v2/mgo/bson"
 	"log"
 	"net/http"
+	"runtime"
 	"sync"
 	"time"
 )
 
-type Service struct{}
+type Service struct {
+	Config *skynet.ServiceConfig
+}
 
 const ServiceName = "Search"
 
 var (
 	_             service.ServiceDelegate = &Service{}
 	Search        *client.ServiceClient
+	Stats         *client.ServiceClient
 	StorageReader *client.ServiceClient
 	StorageWriter *client.ServiceClient
 )
 
 // Funcs required for ServiceDelegate
 
-func (s *Service) MethodCalled(m string)                        {}
-func (s *Service) MethodCompleted(m string, d int64, err error) {}
-func (s *Service) Registered(service *service.Service)          {}
-func (s *Service) Started(service *service.Service)             {}
-func (s *Service) Stopped(service *service.Service)             {}
-func (s *Service) Unregistered(service *service.Service)        {}
+func (s *Service) MethodCalled(m string) {}
+
+func (s *Service) MethodCompleted(m string, d int64, err error) {
+	stat := skytypes.Stat{
+		Config:     s.Config,
+		Name:       m,
+		Nanos:      d,
+		Error:      err,
+		Goroutines: runtime.NumGoroutine(),
+	}
+	runtime.ReadMemStats(&stat.Mem)
+	Stats.SendOnce(nil, "Completed", stat, skytypes.Null)
+}
+
+func (s *Service) Registered(service *service.Service) {}
+
+func (s *Service) Started(service *service.Service) {}
+
+func (s *Service) Stopped(service *service.Service) {}
+
+func (s *Service) Unregistered(service *service.Service) {}
 
 // Service funcs
 
@@ -121,6 +140,7 @@ func main() {
 	c := client.NewClient(cc)
 
 	Search = c.GetService("Search", "", "", "")
+	Stats = c.GetService("Stats", "", "", "")
 	StorageReader = c.GetService("StorageReader", "", "", "")
 	StorageWriter = c.GetService("StorageWriter", "", "", "")
 
@@ -129,7 +149,7 @@ func main() {
 	sc.Region = "Search"
 	sc.Version = "1"
 
-	s := service.CreateService(&Service{}, sc)
+	s := service.CreateService(&Service{sc}, sc)
 	defer s.Shutdown()
 
 	s.Start(true).Wait()

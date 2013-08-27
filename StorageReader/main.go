@@ -6,24 +6,39 @@ import (
 	"git.300brand.com/coverage/skytypes"
 	"git.300brand.com/coverage/storage/mongo"
 	"github.com/skynetservices/skynet"
+	"github.com/skynetservices/skynet/client"
 	"github.com/skynetservices/skynet/service"
 	"log"
+	"runtime"
 )
 
-type Service struct{}
+type Service struct {
+	Config *skynet.ServiceConfig
+}
 
 const ServiceName = "StorageReader"
 
 var (
-	_ service.ServiceDelegate = &Service{}
-	m *mongo.Mongo
+	_     service.ServiceDelegate = &Service{}
+	m     *mongo.Mongo
+	Stats *client.ServiceClient
 )
 
 // Funcs required for ServiceDelegate
 
 func (s *Service) MethodCalled(m string) {}
 
-func (s *Service) MethodCompleted(m string, d int64, err error) {}
+func (s *Service) MethodCompleted(m string, d int64, err error) {
+	stat := skytypes.Stat{
+		Config:     s.Config,
+		Name:       m,
+		Nanos:      d,
+		Error:      err,
+		Goroutines: runtime.NumGoroutine(),
+	}
+	runtime.ReadMemStats(&stat.Mem)
+	Stats.SendOnce(nil, "Completed", stat, skytypes.Null)
+}
 
 func (s *Service) Registered(service *service.Service) {}
 
@@ -68,12 +83,17 @@ func main() {
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 	log.SetPrefix(ServiceName + " ")
 
+	cc, _ := skynet.GetClientConfig()
+	c := client.NewClient(cc)
+
+	Stats = c.GetService("Stats", "", "", "")
+
 	sc, _ := skynet.GetServiceConfig()
 	sc.Name = ServiceName
 	sc.Region = "Storage"
 	sc.Version = "1"
 
-	s := service.CreateService(&Service{}, sc)
+	s := service.CreateService(&Service{sc}, sc)
 	defer s.Shutdown()
 
 	s.Start(true).Wait()

@@ -14,10 +14,13 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"time"
 )
 
-type Service struct{}
+type Service struct {
+	Config *skynet.ServiceConfig
+}
 type RPCArticle struct{}
 type RPCManager struct{}
 type RPCSearch struct{}
@@ -28,6 +31,7 @@ var (
 	_             service.ServiceDelegate = &Service{}
 	Manager       *client.ServiceClient
 	Search        *client.ServiceClient
+	Stats         *client.ServiceClient
 	StorageReader *client.ServiceClient
 
 	jsonrpc  = rpc.NewServer()
@@ -45,12 +49,27 @@ func init() {
 
 // Funcs required for ServiceDelegate
 
-func (s *Service) MethodCalled(m string)                        {}
-func (s *Service) MethodCompleted(m string, d int64, err error) {}
-func (s *Service) Registered(service *service.Service)          {}
-func (s *Service) Started(service *service.Service)             {}
-func (s *Service) Stopped(service *service.Service)             {}
-func (s *Service) Unregistered(service *service.Service)        {}
+func (s *Service) MethodCalled(m string) {}
+
+func (s *Service) MethodCompleted(m string, d int64, err error) {
+	stat := skytypes.Stat{
+		Config:     s.Config,
+		Name:       m,
+		Nanos:      d,
+		Error:      err,
+		Goroutines: runtime.NumGoroutine(),
+	}
+	runtime.ReadMemStats(&stat.Mem)
+	Stats.SendOnce(nil, "Completed", stat, skytypes.Null)
+}
+
+func (s *Service) Registered(service *service.Service) {}
+
+func (s *Service) Started(service *service.Service) {}
+
+func (s *Service) Stopped(service *service.Service) {}
+
+func (s *Service) Unregistered(service *service.Service) {}
 
 // Service funcs
 
@@ -98,6 +117,7 @@ func main() {
 
 	Manager = c.GetService("Manager", "", "", "")
 	Search = c.GetService("Search", "", "", "")
+	Stats = c.GetService("Stats", "", "", "")
 	StorageReader = c.GetService("StorageReader", "", "", "")
 
 	// RPC
@@ -118,7 +138,7 @@ func main() {
 	sc.Name = ServiceName
 	sc.Region = "Management"
 	sc.Version = "1"
-	s := service.CreateService(&Service{}, sc)
+	s := service.CreateService(&Service{sc}, sc)
 	defer s.Shutdown()
 
 	s.Start(true).Wait()
