@@ -11,6 +11,8 @@ import (
 	"github.com/skynetservices/skynet/client"
 	"github.com/skynetservices/skynet/service"
 	"log"
+	"strings"
+	"time"
 )
 
 type Service struct {
@@ -50,10 +52,23 @@ func (s *Service) Unregistered(service *service.Service) {
 
 func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *skytypes.NullType) (err error) {
 	go func(ri *skynet.RequestInfo, a *coverage.Article) {
+		stat := skytypes.Stat{Config: s.Config}
+		start := time.Now()
+		host := a.URL.Host
+		tld := host[strings.LastIndex(host[:len(host)-4], ".")+1:]
+		domain := strings.Replace(tld, ".", "_", -1)
+
+		// Download article
 		if err := downloader.Article(a); err != nil {
+			stat.Name = "Process.Download.Failure." + domain
+			stat.Duration = time.Since(start)
+			Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
 			log.Printf("%s[%s] Error downloading: %s", a.ID.Hex(), a.URL, err)
 			return
 		}
+		stat.Name = "Process.Download.Success." + domain
+		stat.Duration = time.Since(start)
+		Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
 
 		// If any step fails along the way, save the article's state
 		defer func() {
@@ -62,13 +77,30 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *sky
 			}
 		}()
 
+		// Extract body
+		start = time.Now()
 		if err := body.SetBody(a); err != nil {
+			stat.Name = "Process.Body.Failure." + domain
+			stat.Duration = time.Since(start)
+			Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
 			log.Printf("%s[%s] Error setting body: %s", a.ID.Hex(), a.URL, err)
 			return
 		}
+		stat.Name = "Process.Body.Success." + domain
+		stat.Duration = time.Since(start)
+		Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
 
+		// Filter out individual words
 		a.Text.Words.All = lexer.Words(a.Text.Body.Text)
+		stat.Name = "Process.Words"
+		stat.Count = len(a.Text.Words.All)
+		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
+
+		// Filter out Keywords
 		a.Text.Words.Keywords = lexer.Keywords(a.Text.Body.Text)
+		stat.Name = "Process.Keywords"
+		stat.Count = len(a.Text.Words.Keywords)
+		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
 	}(ri, in)
 	return
 }
