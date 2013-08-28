@@ -102,6 +102,7 @@ func (s *Service) Resources(ri *skynet.RequestInfo, stat *skytypes.Stat, out *sk
 		"StackSys":   int(stat.Mem.StackSys),
 		"StackInuse": int(stat.Mem.StackInuse),
 		"NumGC":      int(stat.Mem.NumGC),
+		"Goroutines": stat.Goroutines,
 	}
 	for suffix, value := range attr {
 		stats.Gauge(statJoin(base, suffix), value, Rate)
