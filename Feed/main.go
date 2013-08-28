@@ -58,14 +58,31 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *sk
 	go func(ri *skynet.RequestInfo, f *coverage.Feed) {
 		defer StorageWriter.SendOnce(ri, "Feed", f, f)
 
+		stat := skytypes.Stat{Config: s.Config}
+
+		start := time.Now()
 		if err := downloader.Feed(f); err != nil {
+			stat.Name, stat.Duration = "Process.Download.Failure", time.Since(start)
+			Stats.SendOnce(ri, "Timer", stat, skytypes.Null)
 			log.Printf("%s[%s] Error downloading: %s", f.ID.Hex(), f.URL, err)
 			return
 		}
+		stat.Name, stat.Duration = "Process.Download.Success", time.Since(start)
+		Stats.SendOnce(ri, "Timer", stat, skytypes.Null)
+
+		start = time.Now()
 		if err := feed.Process(f); err != nil {
+			stat.Name, stat.Duration = "Process.Process.Failure", time.Since(start)
+			Stats.SendOnce(ri, "Timer", stat, skytypes.Null)
 			log.Printf("%s[%s] Error parsing: %s", f.ID.Hex(), f.URL, err)
 			return
 		}
+		stat.Name, stat.Duration = "Process.Process.Success", time.Since(start)
+		Stats.SendOnce(ri, "Timer", stat, skytypes.Null)
+
+		stat.Name, stat.Count = "Process.NewArticles", len(f.Articles)
+		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
+
 		for _, a := range f.Articles {
 			// Add a 5-15 second delay between article downloads
 			<-time.After(time.Duration(rand.Int63n(10)+5) * time.Second)
