@@ -83,9 +83,17 @@ func (s *Service) Article(ri *skynet.RequestInfo, in *coverage.Article, out *cov
 		return
 	}
 	go func(a *coverage.Article) {
-		if err = m.AddKeywords(in); err != nil {
+		stat := skytypes.Stat{
+			Config: s.Config,
+			Name:   "ArticleKeywords",
+		}
+		start := time.Now()
+		if err := m.AddKeywords(in); err != nil {
+			stat.Error = err
 			log.Printf("Error saving keywords: %s", err)
 		}
+		stat.Duration = time.Since(start)
+		Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
 	}(in)
 	return
 }
