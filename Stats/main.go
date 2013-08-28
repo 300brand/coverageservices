@@ -5,7 +5,7 @@ import (
 	"git.300brand.com/coverage/config"
 	"git.300brand.com/coverage/skytypes"
 	"git.300brand.com/coverageservices/skynetstats"
-	"github.com/cyberdelia/statsd"
+	"github.com/jbaikge/statsd"
 	"github.com/skynetservices/skynet"
 	"github.com/skynetservices/skynet/client"
 	"github.com/skynetservices/skynet/service"
@@ -36,11 +36,23 @@ func (s *Service) MethodCalled(m string) {}
 func (s *Service) MethodCompleted(m string, d int64, err error) {}
 
 func (s *Service) Registered(service *service.Service) {
-	log.Printf("Connecting to %s", config.StatsdServer.Address)
-	var err error
-	if stats, err = statsd.Dial(config.StatsdServer.Address); err != nil {
-		log.Fatalf("Could not connect to Statsd Server: %s", err)
-	}
+	go func(addr string) {
+		for {
+			log.Printf("Connecting to %s", addr)
+			newConn, err := statsd.Dial(addr)
+			if err != nil {
+				log.Printf("Could not connect to Statsd Server: %s", err)
+			}
+			// Swap connections, close out the old one and start using the fresh
+			// connection
+			oldConn := stats
+			stats = newConn
+			if oldConn != nil {
+				oldConn.Close()
+			}
+			<-time.After(time.Minute)
+		}
+	}(config.StatsdServer.Address)
 	skynetstats.Start(s.Config, Stats)
 }
 
@@ -56,49 +68,58 @@ func (s *Service) Unregistered(service *service.Service) {
 
 // Service funcs
 
-func (s *Service) Decrement(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
-	return
-}
-
-func (s *Service) Gauge(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
-	return
-}
-
-func (s *Service) Increment(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
-	return
-}
-
 func (s *Service) Completed(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
 	base := statBase(stat)
 	stats.Increment(statJoin(base, "Calls"), 1, Rate)
 	if stat.Error != nil {
 		stats.Increment(statJoin(base, "Errors"), 1, Rate)
 	}
-	stats.Timing(statJoin(base, "Duration"), int(stat.Nanos/time.Millisecond.Nanoseconds()), Rate)
+	stats.Timing(statJoin(base, "Duration"), stat.Duration, Rate)
 	return
+}
+
+func (s *Service) Decrement(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
+	return stats.Decrement(statBase(stat), stat.Count, Rate)
+}
+
+func (s *Service) Gauge(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
+	return stats.Gauge(statBase(stat), stat.Count, Rate)
+}
+
+func (s *Service) Increment(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
+	return stats.Increment(statBase(stat), stat.Count, Rate)
 }
 
 func (s *Service) Resources(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
 	base := statBase(stat)
-	stats.Gauge(statJoin(base, "Alloc"), int(stat.Mem.Alloc), Rate)
-	stats.Gauge(statJoin(base, "TotalAlloc"), int(stat.Mem.TotalAlloc), Rate)
-	stats.Gauge(statJoin(base, "Mallocs"), int(stat.Mem.Mallocs), Rate)
-	stats.Gauge(statJoin(base, "HeapAlloc"), int(stat.Mem.HeapAlloc), Rate)
-	stats.Gauge(statJoin(base, "HeapSys"), int(stat.Mem.HeapSys), Rate)
-	stats.Gauge(statJoin(base, "HeapInuse"), int(stat.Mem.HeapInuse), Rate)
-	stats.Gauge(statJoin(base, "StackSys"), int(stat.Mem.StackSys), Rate)
-	stats.Gauge(statJoin(base, "StackInuse"), int(stat.Mem.StackInuse), Rate)
-	stats.Gauge(statJoin(base, "NumGC"), int(stat.Mem.NumGC), Rate)
+	attr := map[string]int{
+		"Alloc":      int(stat.Mem.Alloc),
+		"TotalAlloc": int(stat.Mem.TotalAlloc),
+		"Mallocs":    int(stat.Mem.Mallocs),
+		"HeapAlloc":  int(stat.Mem.HeapAlloc),
+		"HeapSys":    int(stat.Mem.HeapSys),
+		"HeapInuse":  int(stat.Mem.HeapInuse),
+		"StackSys":   int(stat.Mem.StackSys),
+		"StackInuse": int(stat.Mem.StackInuse),
+		"NumGC":      int(stat.Mem.NumGC),
+	}
+	for suffix, value := range attr {
+		stats.Gauge(statJoin(base, suffix), value, Rate)
+	}
 	return
+}
+
+func (s *Service) Timing(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
+	return stats.Timing(statBase(stat), stat.Duration, Rate)
 }
 
 // Support funcs
 
 func statBase(stat *skytypes.Stat) (s string) {
 	if stat.Name == "" {
-		s = fmt.Sprintf("%s.%s.%s", stat.Config.Name, stat.Config.Version, stat.Config.Region)
+		s = fmt.Sprintf("%s.%s.%s", stat.Config.Region, stat.Config.Version, stat.Config.Name)
 	} else {
-		s = fmt.Sprintf("%s.%s.%s.%s", stat.Config.Name, stat.Name, stat.Config.Version, stat.Config.Region)
+		s = fmt.Sprintf("%s.%s.%s.%s", stat.Config.Region, stat.Config.Version, stat.Config.Name, stat.Name)
 	}
 	return
 }

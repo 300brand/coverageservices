@@ -17,10 +17,10 @@ var (
 
 func Completed(m string, d int64, err error) {
 	stat := skytypes.Stat{
-		Config: sc,
-		Name:   m,
-		Nanos:  d,
-		Error:  err,
+		Config:   sc,
+		Name:     m,
+		Duration: time.Duration(d),
+		Error:    err,
 	}
 	c.SendOnce(nil, "Completed", stat, skytypes.Null)
 }
