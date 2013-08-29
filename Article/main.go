@@ -70,7 +70,7 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *sky
 		stat.Name, stat.Duration = "Process.Download.Success."+domain, time.Since(start)
 		Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
 
-		stat.Name, stat.Count = "Process.Download.Size."+domain, len(a.Text.HTML)
+		stat.Name, stat.Count = "Process.Bandwidth."+domain, len(a.Text.HTML)
 		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
 
 		// If any step fails along the way, save the article's state
@@ -93,7 +93,7 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *sky
 		stat.Name, stat.Duration = "Process.Body.Success."+domain, time.Since(start)
 		Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
 
-		stat.Name, stat.Count = "Process.Body.Size."+domain, len(a.Text.Body.Text)
+		stat.Name, stat.Count = "Process.BodyLength."+domain, len(a.Text.Body.Text)
 		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
 
 		// Filter out individual words

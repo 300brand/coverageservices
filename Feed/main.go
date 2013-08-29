@@ -70,7 +70,7 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *sk
 		stat.Name, stat.Duration = "Process.Download.Success", time.Since(start)
 		Stats.SendOnce(ri, "Timer", stat, skytypes.Null)
 
-		stat.Name, stat.Count = "Process.Download.Size", len(f.Content)
+		stat.Name, stat.Count = "Process.Bandwidth", len(f.Content)
 		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
 
 		start = time.Now()
