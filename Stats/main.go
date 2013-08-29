@@ -10,6 +10,7 @@ import (
 	"github.com/skynetservices/skynet/client"
 	"github.com/skynetservices/skynet/service"
 	"log"
+	"os"
 	"strings"
 	"time"
 )
@@ -74,7 +75,7 @@ func (s *Service) Completed(ri *skynet.RequestInfo, stat *skytypes.Stat, out *sk
 	if stat.Error != nil {
 		stats.Increment(statJoin(base, "Errors"), 1, Rate)
 	}
-	stats.Timing(statJoin(base, "Duration"), stat.Duration, Rate)
+	stats.Duration(statJoin(base, "Duration"), stat.Duration, Rate)
 	return
 }
 
@@ -110,17 +111,21 @@ func (s *Service) Resources(ri *skynet.RequestInfo, stat *skytypes.Stat, out *sk
 	return
 }
 
-func (s *Service) Timing(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
-	return stats.Timing(statBase(stat), stat.Duration, Rate)
+func (s *Service) Duration(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
+	return stats.Duration(statBase(stat), stat.Duration, Rate)
 }
 
 // Support funcs
 
 func statBase(stat *skytypes.Stat) (s string) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = fmt.Sprintf("Unknown-%d", os.Getegid())
+	}
 	if stat.Name == "" {
-		s = fmt.Sprintf("%s.%s.%s", stat.Config.Region, stat.Config.Version, stat.Config.Name)
+		s = fmt.Sprintf("%s.%s.%s.%s", stat.Config.Region, stat.Config.Version, stat.Config.Name, hostname)
 	} else {
-		s = fmt.Sprintf("%s.%s.%s.%s", stat.Config.Region, stat.Config.Version, stat.Config.Name, stat.Name)
+		s = fmt.Sprintf("%s.%s.%s.%s.%s", stat.Config.Region, stat.Config.Version, stat.Config.Name, stat.Name, hostname)
 	}
 	return
 }
