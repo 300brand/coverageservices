@@ -10,7 +10,6 @@ import (
 	"github.com/skynetservices/skynet"
 	"github.com/skynetservices/skynet/client"
 	"github.com/skynetservices/skynet/service"
-	"labix.org/v2/mgo/bson"
 	"log"
 	"net/http"
 	"sync"
@@ -112,12 +111,20 @@ func (s *Service) Search(ri *skynet.RequestInfo, in *skytypes.SearchQuery, out *
 
 	// Wait for all of the DateSearch calls to finish, then send the
 	// notification of completeness
-	go func(ri skynet.RequestInfo, id bson.ObjectId) {
+	go func(ri skynet.RequestInfo, cs *coverage.Search) {
 		wg.Wait()
-		if err := Search.SendOnce(&ri, "NotifyComplete", skytypes.ObjectId{id}, skytypes.Null); err != nil {
+		if err := Search.SendOnce(&ri, "NotifyComplete", skytypes.ObjectId{cs.Id}, skytypes.Null); err != nil {
 			log.Print(err)
 		}
-	}(*ri, cs.Id)
+
+		// Track how long it took to do the search
+		stat := skytypes.Stat{
+			Config:   s.Config,
+			Name:     "Search.Completed",
+			Duration: time.Since(cs.Start),
+		}
+		Stats.SendOnce(&ri, "Duration", stat, skytypes.Null)
+	}(*ri, cs)
 
 	// Prepare information for the caller
 	out.Id = cs.Id
