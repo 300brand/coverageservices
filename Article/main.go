@@ -66,9 +66,12 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *sky
 			log.Printf("%s[%s] Error downloading: %s", a.ID.Hex(), a.URL, err)
 			return
 		}
-		stat.Name = "Process.Download.Success." + domain
-		stat.Duration = time.Since(start)
+
+		stat.Name, stat.Duration = "Process.Download.Success."+domain, time.Since(start)
 		Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
+
+		stat.Name, stat.Count = "Process.Download.Size."+domain, len(a.Text.HTML)
+		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
 
 		// If any step fails along the way, save the article's state
 		defer func() {
@@ -79,27 +82,28 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *sky
 
 		// Extract body
 		start = time.Now()
-		if err := body.SetBody(a); err != nil {
+		if err := body.SetBody(a); err != nil || a.Text.Body.Text == nil || len(a.Text.Body.Text) == 0 {
 			stat.Name = "Process.Body.Failure." + domain
 			stat.Duration = time.Since(start)
 			Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
 			log.Printf("%s[%s] Error setting body: %s", a.ID.Hex(), a.URL, err)
 			return
 		}
-		stat.Name = "Process.Body.Success." + domain
-		stat.Duration = time.Since(start)
+
+		stat.Name, stat.Duration = "Process.Body.Success."+domain, time.Since(start)
 		Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
+
+		stat.Name, stat.Count = "Process.Body.Size."+domain, len(a.Text.Body.Text)
+		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
 
 		// Filter out individual words
 		a.Text.Words.All = lexer.Words(a.Text.Body.Text)
-		stat.Name = "Process.Words"
-		stat.Count = len(a.Text.Words.All)
+		stat.Name, stat.Count = "Process.Words", len(a.Text.Words.All)
 		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
 
 		// Filter out Keywords
 		a.Text.Words.Keywords = lexer.Keywords(a.Text.Body.Text)
-		stat.Name = "Process.Keywords"
-		stat.Count = len(a.Text.Words.Keywords)
+		stat.Name, stat.Count = "Process.Keywords", len(a.Text.Words.Keywords)
 		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
 	}(ri, in)
 	return
