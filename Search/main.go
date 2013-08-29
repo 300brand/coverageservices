@@ -116,14 +116,7 @@ func (s *Service) Search(ri *skynet.RequestInfo, in *skytypes.SearchQuery, out *
 		if err := Search.SendOnce(&ri, "NotifyComplete", skytypes.ObjectId{cs.Id}, skytypes.Null); err != nil {
 			log.Print(err)
 		}
-
-		// Track how long it took to do the search
-		stat := skytypes.Stat{
-			Config:   s.Config,
-			Name:     "Search.Completed",
-			Duration: time.Since(cs.Start),
-		}
-		Stats.SendOnce(&ri, "Duration", stat, skytypes.Null)
+		skynetstats.Duration(time.Since(cs.Start), "Search.Completed")
 	}(*ri, cs)
 
 	// Prepare information for the caller
