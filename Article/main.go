@@ -62,13 +62,13 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *sky
 		if err := downloader.Article(a); err != nil {
 			stat.Name = "Process.Download.Failure." + domain
 			stat.Duration = time.Since(start)
-			Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
+			Stats.SendOnce(ri, "Duration", stat, skytypes.Null)
 			log.Printf("%s[%s] Error downloading: %s", a.ID.Hex(), a.URL, err)
 			return
 		}
 
 		stat.Name, stat.Duration = "Process.Download.Success."+domain, time.Since(start)
-		Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
+		Stats.SendOnce(ri, "Duration", stat, skytypes.Null)
 
 		stat.Name, stat.Count = "Process.Bandwidth."+domain, len(a.Text.HTML)
 		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
@@ -85,13 +85,13 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *sky
 		if err := body.SetBody(a); err != nil || a.Text.Body.Text == nil || len(a.Text.Body.Text) == 0 {
 			stat.Name = "Process.Body.Failure." + domain
 			stat.Duration = time.Since(start)
-			Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
+			Stats.SendOnce(ri, "Duration", stat, skytypes.Null)
 			log.Printf("%s[%s] Error setting body: %s", a.ID.Hex(), a.URL, err)
 			return
 		}
 
 		stat.Name, stat.Duration = "Process.Body.Success."+domain, time.Since(start)
-		Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
+		Stats.SendOnce(ri, "Duration", stat, skytypes.Null)
 
 		stat.Name, stat.Count = "Process.BodyLength."+domain, len(a.Text.Body.Text)
 		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)

@@ -93,7 +93,7 @@ func (s *Service) Article(ri *skynet.RequestInfo, in *coverage.Article, out *cov
 			log.Printf("Error saving keywords: %s", err)
 		}
 		stat.Duration = time.Since(start)
-		Stats.SendOnce(ri, "Timing", stat, skytypes.Null)
+		Stats.SendOnce(ri, "Duration", stat, skytypes.Null)
 	}(in)
 	return
 }
