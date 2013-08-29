@@ -58,33 +58,23 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *sk
 	go func(ri *skynet.RequestInfo, f *coverage.Feed) {
 		defer StorageWriter.SendOnce(ri, "Feed", f, f)
 
-		stat := skytypes.Stat{Config: s.Config}
-
 		start := time.Now()
 		if err := downloader.Feed(f); err != nil {
-			stat.Name, stat.Duration = "Process.Download.Failure", time.Since(start)
-			Stats.SendOnce(ri, "Timer", stat, skytypes.Null)
+			skynetstats.Duration(time.Since(start), "Process.Download.Failure")
 			log.Printf("%s[%s] Error downloading: %s", f.ID.Hex(), f.URL, err)
 			return
 		}
-		stat.Name, stat.Duration = "Process.Download.Success", time.Since(start)
-		Stats.SendOnce(ri, "Timer", stat, skytypes.Null)
-
-		stat.Name, stat.Count = "Process.Bandwidth", len(f.Content)
-		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
+		skynetstats.Duration(time.Since(start), "Process.Download.Success")
+		skynetstats.Count(len(f.Content), "Process.Bandwidth")
 
 		start = time.Now()
 		if err := feed.Process(f); err != nil {
-			stat.Name, stat.Duration = "Process.Process.Failure", time.Since(start)
-			Stats.SendOnce(ri, "Timer", stat, skytypes.Null)
+			skynetstats.Duration(time.Since(start), "Process.Process.Failure")
 			log.Printf("%s[%s] Error parsing: %s", f.ID.Hex(), f.URL, err)
 			return
 		}
-		stat.Name, stat.Duration = "Process.Process.Success", time.Since(start)
-		Stats.SendOnce(ri, "Timer", stat, skytypes.Null)
-
-		stat.Name, stat.Count = "Process.NewArticles", len(f.Articles)
-		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
+		skynetstats.Duration(time.Since(start), "Process.Process.Success")
+		skynetstats.Count(len(f.Articles), "Process.NewArticles")
 
 		for _, a := range f.Articles {
 			// Add a 5-15 second delay between article downloads
