@@ -34,7 +34,11 @@ var (
 
 func (s *Service) MethodCalled(m string) {}
 
-func (s *Service) MethodCompleted(m string, d int64, err error) {}
+func (s *Service) MethodCompleted(m string, d int64, err error) {
+	if err != nil {
+		log.Printf("Stats.%s error: %s", m, err)
+	}
+}
 
 func (s *Service) Registered(service *service.Service) {
 	go func(addr string) {
