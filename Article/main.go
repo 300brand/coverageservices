@@ -55,7 +55,7 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *sky
 		stat := skytypes.Stat{Config: s.Config}
 		start := time.Now()
 		host := a.URL.Host
-		tld := host[strings.LastIndex(host[:len(host)-4], ".")+1:]
+		tld := host[strings.LastIndex(host[:strings.LastIndex(host, ".")], ".")+1:]
 		domain := strings.Replace(tld, ".", "_", -1)
 
 		// Download article
