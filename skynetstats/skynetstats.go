@@ -25,13 +25,22 @@ func Completed(m string, d int64, err error) {
 	c.SendOnce(nil, "Completed", stat, skytypes.Null)
 }
 
-func Report(sc *skynet.ServiceConfig) {
+func Count(name string, count int) {
 	stat := skytypes.Stat{
-		Config:     sc,
-		Goroutines: runtime.NumGoroutine(),
+		Config: sc,
+		Name:   name,
+		Count:  count,
 	}
-	runtime.ReadMemStats(&stat.Mem)
-	c.SendOnce(nil, "Resources", stat, skytypes.Null)
+	c.SendOnce(nil, "Increment", stat, skytypes.Null)
+}
+
+func Duration(name string, d time.Duration) {
+	stat := skytypes.Stat{
+		Config:   sc,
+		Name:     name,
+		Duration: d,
+	}
+	c.SendOnce(nil, "Duration", stat, skytypes.Null)
 }
 
 func Start(serviceConfig *skynet.ServiceConfig, statsClient *client.ServiceClient) {
@@ -43,7 +52,7 @@ func Start(serviceConfig *skynet.ServiceConfig, statsClient *client.ServiceClien
 		for {
 			select {
 			case <-ticker.C:
-				Report(sc)
+				report(sc)
 			case <-chStop:
 				return
 			}
@@ -54,4 +63,13 @@ func Start(serviceConfig *skynet.ServiceConfig, statsClient *client.ServiceClien
 func Stop() {
 	ticker.Stop()
 	chStop <- true
+}
+
+func report(sc *skynet.ServiceConfig) {
+	stat := skytypes.Stat{
+		Config:     sc,
+		Goroutines: runtime.NumGoroutine(),
+	}
+	runtime.ReadMemStats(&stat.Mem)
+	c.SendOnce(nil, "Resources", stat, skytypes.Null)
 }
