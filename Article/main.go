@@ -52,7 +52,6 @@ func (s *Service) Unregistered(service *service.Service) {
 
 func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *skytypes.NullType) (err error) {
 	go func(ri *skynet.RequestInfo, a *coverage.Article) {
-		stat := skytypes.Stat{Config: s.Config}
 		start := time.Now()
 		host := a.URL.Host
 		tld := host[strings.LastIndex(host[:strings.LastIndex(host, ".")], ".")+1:]
@@ -60,18 +59,12 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *sky
 
 		// Download article
 		if err := downloader.Article(a); err != nil {
-			stat.Name = "Process.Download.Failure." + domain
-			stat.Duration = time.Since(start)
-			Stats.SendOnce(ri, "Duration", stat, skytypes.Null)
+			skynetstats.Duration(time.Since(start), "Process.Download.Failure", domain)
 			log.Printf("%s[%s] Error downloading: %s", a.ID.Hex(), a.URL, err)
 			return
 		}
-
-		stat.Name, stat.Duration = "Process.Download.Success."+domain, time.Since(start)
-		Stats.SendOnce(ri, "Duration", stat, skytypes.Null)
-
-		stat.Name, stat.Count = "Process.Bandwidth."+domain, len(a.Text.HTML)
-		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
+		skynetstats.Duration(time.Since(start), "Process.Download.Success", domain)
+		skynetstats.Count(len(a.Text.HTML), "Process.Bandwidth", domain)
 
 		// If any step fails along the way, save the article's state
 		defer func() {
@@ -83,28 +76,20 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *sky
 		// Extract body
 		start = time.Now()
 		if err := body.SetBody(a); err != nil || a.Text.Body.Text == nil || len(a.Text.Body.Text) == 0 {
-			stat.Name = "Process.Body.Failure." + domain
-			stat.Duration = time.Since(start)
-			Stats.SendOnce(ri, "Duration", stat, skytypes.Null)
+			skynetstats.Duration(time.Since(start), "Process.Body.Failure", domain)
 			log.Printf("%s[%s] Error setting body: %s", a.ID.Hex(), a.URL, err)
 			return
 		}
-
-		stat.Name, stat.Duration = "Process.Body.Success."+domain, time.Since(start)
-		Stats.SendOnce(ri, "Duration", stat, skytypes.Null)
-
-		stat.Name, stat.Count = "Process.BodyLength."+domain, len(a.Text.Body.Text)
-		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
+		skynetstats.Duration(time.Since(start), "Process.Body.Success", domain)
+		skynetstats.Count(len(a.Text.Body.Text), "Process.BodyLength", domain)
 
 		// Filter out individual words
 		a.Text.Words.All = lexer.Words(a.Text.Body.Text)
-		stat.Name, stat.Count = "Process.Words", len(a.Text.Words.All)
-		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
+		skynetstats.Count(len(a.Text.Words.All), "Process.Words")
 
 		// Filter out Keywords
 		a.Text.Words.Keywords = lexer.Keywords(a.Text.Body.Text)
-		stat.Name, stat.Count = "Process.Keywords", len(a.Text.Words.Keywords)
-		Stats.SendOnce(ri, "Increment", stat, skytypes.Null)
+		skynetstats.Count(len(a.Text.Words.Keywords), "Process.Keywords")
 	}(ri, in)
 	return
 }
