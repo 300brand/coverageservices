@@ -5,6 +5,7 @@ import (
 	"github.com/skynetservices/skynet"
 	"github.com/skynetservices/skynet/client"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -25,19 +26,19 @@ func Completed(m string, d int64, err error) {
 	c.SendOnce(nil, "Completed", stat, skytypes.Null)
 }
 
-func Count(name string, count int) {
+func Count(count int, name ...string) {
 	stat := skytypes.Stat{
 		Config: sc,
-		Name:   name,
+		Name:   strings.Join(name, "."),
 		Count:  count,
 	}
 	c.SendOnce(nil, "Increment", stat, skytypes.Null)
 }
 
-func Duration(name string, d time.Duration) {
+func Duration(d time.Duration, name ...string) {
 	stat := skytypes.Stat{
 		Config:   sc,
-		Name:     name,
+		Name:     strings.Join(name, "."),
 		Duration: d,
 	}
 	c.SendOnce(nil, "Duration", stat, skytypes.Null)
