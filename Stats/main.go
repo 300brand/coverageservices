@@ -112,6 +112,7 @@ func (s *Service) Resources(ri *skynet.RequestInfo, stat *skytypes.Stat, out *sk
 	for suffix, value := range attr {
 		stats.Gauge(statJoin(base, suffix), value, Rate)
 	}
+	stats.Increment(statJoin(base, "Heartbeat"), 1, Rate)
 	return
 }
 
