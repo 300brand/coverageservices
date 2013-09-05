@@ -14,6 +14,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 )
@@ -23,7 +24,15 @@ type Service struct {
 }
 type RPCArticle struct{}
 type RPCManager struct{}
+type RPCPublication struct{}
 type RPCSearch struct{}
+
+type NewPub struct {
+	Title      string
+	URL        string
+	Readership int64
+	Feeds      []string
+}
 
 const ServiceName = "WebAPI"
 
@@ -33,6 +42,7 @@ var (
 	Search        *client.ServiceClient
 	Stats         *client.ServiceClient
 	StorageReader *client.ServiceClient
+	StorageWriter *client.ServiceClient
 
 	jsonrpc  = rpc.NewServer()
 	cmdOnce  = &skytypes.ClockCommand{Command: "once"}
@@ -44,6 +54,7 @@ func init() {
 	jsonrpc.RegisterCodec(json.NewCodec(), "application/json")
 	jsonrpc.RegisterService(new(RPCArticle), "Article")
 	jsonrpc.RegisterService(new(RPCManager), "Manager")
+	jsonrpc.RegisterService(new(RPCPublication), "Publication")
 	jsonrpc.RegisterService(new(RPCSearch), "Search")
 }
 
@@ -97,6 +108,31 @@ func (m *RPCManager) StopFeeds(r *http.Request, in *skytypes.NullType, out *skyt
 	return Manager.SendOnce(nil, "FeedProcessor", cmdStop, skytypes.Null)
 }
 
+func (m *RPCPublication) Add(r *http.Request, in *NewPub, out *coverage.Publication) (err error) {
+	p := coverage.NewPublication()
+	p.Title = in.Title
+	p.Readership = in.Readership
+	if p.URL, err = url.Parse(in.URL); err != nil {
+		return
+	}
+	if err = StorageWriter.SendOnce(nil, "Publication", p, skytypes.Null); err != nil {
+		return
+	}
+	for _, feedUrl := range in.Feeds {
+		f := coverage.NewFeed()
+		f.PublicationId = p.ID
+		if f.URL, err = url.Parse(feedUrl); err != nil {
+			return
+		}
+		if err = StorageWriter.SendOnce(nil, "Feed", f, skytypes.Null); err != nil {
+			continue
+		}
+		p.NumFeeds++
+	}
+	*out = *p
+	return
+}
+
 func (m *RPCSearch) Search(r *http.Request, in *skytypes.SearchQuery, out *skytypes.SearchQueryResponse) (err error) {
 	return Search.SendOnce(nil, "Search", in, out)
 }
@@ -115,6 +151,7 @@ func main() {
 	Search = c.GetService("Search", "", "", "")
 	Stats = c.GetService("Stats", "", "", "")
 	StorageReader = c.GetService("StorageReader", "", "", "")
+	StorageWriter = c.GetService("StorageWriter", "", "", "")
 
 	// RPC
 	listener, err := net.Listen("tcp", config.RPCServer.Address)
