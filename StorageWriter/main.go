@@ -103,6 +103,25 @@ func (s *Service) Feed(ri *skynet.RequestInfo, in *coverage.Feed, out *coverage.
 	return
 }
 
+func (s *Service) Publication(ri *skynet.RequestInfo, in *coverage.Publication, out *coverage.Publication) (err error) {
+	defer func() {
+		*out = *in
+	}()
+
+	if err = m.UpdatePublication(in); err != nil {
+		return
+	}
+	return
+}
+
+func (s *Service) PubIncArticles(ri *skynet.RequestInfo, in *skytypes.Inc, out *skytypes.NullType) (err error) {
+	return m.PublicationIncArticles(in.Id, in.Delta)
+}
+
+func (s *Service) PubIncFeeds(ri *skynet.RequestInfo, in *skytypes.Inc, out *skytypes.NullType) (err error) {
+	return m.PublicationIncFeeds(in.Id, in.Delta)
+}
+
 // Main
 
 func main() {
