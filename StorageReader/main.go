@@ -74,6 +74,9 @@ func (s *Service) Publication(ri *skynet.RequestInfo, in *skytypes.ObjectId, out
 }
 
 func (s *Service) Publications(ri *skynet.RequestInfo, in *skytypes.MultiQuery, out *skytypes.MultiPubs) (err error) {
+	if out.Total, err = m.C.Publications.Find(in.Query).Count(); err != nil {
+		return
+	}
 	out.Query = *in
 	out.Publications = make([]*coverage.Publication, 0, in.Limit)
 	return m.GetPublications(in.Query, in.Sort, in.Skip, in.Limit, &out.Publications)
