@@ -27,7 +27,7 @@ type RPCManager struct{}
 type RPCPublication struct{}
 type RPCSearch struct{}
 
-type NewPub struct {
+type Pub struct {
 	Title      string
 	URL        string
 	Readership int64
@@ -108,7 +108,7 @@ func (m *RPCManager) StopFeeds(r *http.Request, in *skytypes.NullType, out *skyt
 	return Manager.SendOnce(nil, "FeedProcessor", cmdStop, skytypes.Null)
 }
 
-func (m *RPCPublication) Add(r *http.Request, in *NewPub, out *coverage.Publication) (err error) {
+func (m *RPCPublication) Add(r *http.Request, in *Pub, out *coverage.Publication) (err error) {
 	p := coverage.NewPublication()
 	p.Title = in.Title
 	p.Readership = in.Readership
@@ -131,6 +131,14 @@ func (m *RPCPublication) Add(r *http.Request, in *NewPub, out *coverage.Publicat
 	}
 	*out = *p
 	return
+}
+
+func (m *RPCPublication) Get(r *http.Request, in *skytypes.ObjectId, out *coverage.Publication) (err error) {
+	return StorageReader.Send(nil, "Publication", in, out)
+}
+
+func (m *RPCPublication) GetAll(r *http.Request, in *skytypes.MultiQuery, out *skytypes.MultiPubs) (err error) {
+	return StorageReader.Send(nil, "Publications", in, out)
 }
 
 func (m *RPCSearch) Search(r *http.Request, in *skytypes.SearchQuery, out *skytypes.SearchQueryResponse) (err error) {
