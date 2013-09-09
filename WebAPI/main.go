@@ -115,19 +115,22 @@ func (m *RPCPublication) Add(r *http.Request, in *Pub, out *coverage.Publication
 	if p.URL, err = url.Parse(in.URL); err != nil {
 		return
 	}
+	feeds := make([]*coverage.Feed, len(in.Feeds))
+	for i, feedUrl := range in.Feeds {
+		feeds[i] = coverage.NewFeed()
+		feeds[i].PublicationId = p.ID
+		if feeds[i].URL, err = url.Parse(feedUrl); err != nil {
+			return
+		}
+		p.NumFeeds++
+	}
 	if err = StorageWriter.SendOnce(nil, "Publication", p, skytypes.Null); err != nil {
 		return
 	}
-	for _, feedUrl := range in.Feeds {
-		f := coverage.NewFeed()
-		f.PublicationId = p.ID
-		if f.URL, err = url.Parse(feedUrl); err != nil {
-			return
-		}
+	for _, f := range feeds {
 		if err = StorageWriter.SendOnce(nil, "Feed", f, skytypes.Null); err != nil {
 			continue
 		}
-		p.NumFeeds++
 	}
 	*out = *p
 	return
