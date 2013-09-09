@@ -73,6 +73,12 @@ func (s *Service) Publication(ri *skynet.RequestInfo, in *skytypes.ObjectId, out
 	return m.GetPublication(in.Id, out)
 }
 
+func (s *Service) Publications(ri *skynet.RequestInfo, in *skytypes.MultiQuery, out *skytypes.MultiPubs) (err error) {
+	out.Query = *in
+	out.Publications = make([]*coverage.Publication, 0, in.Limit)
+	return m.GetPublications(in.Query, in.Sort, in.Skip, in.Limit, &out.Publications)
+}
+
 func (s *Service) Search(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *coverage.Search) (err error) {
 	return m.GetSearch(in.Id, out)
 }
