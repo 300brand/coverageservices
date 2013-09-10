@@ -1,7 +1,7 @@
 package skynetstats
 
 import (
-	"git.300brand.com/coverage/skytypes"
+	"git.300brand.com/coverageservices/skytypes"
 	"github.com/skynetservices/skynet"
 	"github.com/skynetservices/skynet/client"
 	"runtime"

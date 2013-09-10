@@ -3,9 +3,9 @@ package main
 import (
 	"git.300brand.com/coverage"
 	"git.300brand.com/coverage/config"
-	"git.300brand.com/coverage/skytypes"
 	"git.300brand.com/coverage/storage/mongo"
 	"git.300brand.com/coverageservices/skynetstats"
+	"git.300brand.com/coverageservices/skytypes"
 	"github.com/skynetservices/skynet"
 	"github.com/skynetservices/skynet/client"
 	"github.com/skynetservices/skynet/service"

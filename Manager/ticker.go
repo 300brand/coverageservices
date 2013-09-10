@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"git.300brand.com/coverage/skytypes"
+	"git.300brand.com/coverageservices/skytypes"
 	"sync/atomic"
 	"time"
 )
