@@ -51,6 +51,13 @@ type MultiPubs struct {
 	Publications []*coverage.Publication
 }
 
+type Pub struct {
+	Title      string
+	URL        string
+	Readership int64
+	Feeds      []string
+}
+
 type SearchQuery struct {
 	Q      string
 	Notify string

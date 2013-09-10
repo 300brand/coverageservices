@@ -27,13 +27,6 @@ type RPCManager struct{}
 type RPCPublication struct{}
 type RPCSearch struct{}
 
-type Pub struct {
-	Title      string
-	URL        string
-	Readership int64
-	Feeds      []string
-}
-
 const ServiceName = "WebAPI"
 
 var (
@@ -108,7 +101,7 @@ func (m *RPCManager) StopFeeds(r *http.Request, in *skytypes.NullType, out *skyt
 	return Manager.SendOnce(nil, "FeedProcessor", cmdStop, skytypes.Null)
 }
 
-func (m *RPCPublication) Add(r *http.Request, in *Pub, out *coverage.Publication) (err error) {
+func (m *RPCPublication) Add(r *http.Request, in *skytypes.Pub, out *coverage.Publication) (err error) {
 	p := coverage.NewPublication()
 	p.Title = in.Title
 	p.Readership = in.Readership
