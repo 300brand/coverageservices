@@ -70,6 +70,14 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *sky
 		defer func() {
 			if err := StorageWriter.SendOnce(ri, "Article", a, a); err != nil {
 				log.Printf("%s[%s] Error saving: %s", a.ID.Hex(), a.URL, err)
+				return
+			}
+			inc := skytypes.Inc{
+				Id:    a.PublicationId,
+				Delta: 1,
+			}
+			if err := StorageWriter.SendOnce(ri, "PubIncArticles", inc, skytypes.Null); err != nil {
+				log.Printf("%s[%s] Error incrementing article count for pub [%s]: %s", a.ID.Hex(), a.URL, a.PublicationId.Hex(), err)
 			}
 		}()
 
