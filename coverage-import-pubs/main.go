@@ -68,7 +68,7 @@ func JSONImport(file string) (pubs []skytypes.Pub, err error) {
 }
 
 func MySQLImport() (pubs []skytypes.Pub, err error) {
-	pubs = make([]skytypes.Pub, 512)
+	pubs = make([]skytypes.Pub, 0, 512)
 	var (
 		pubMap            = make(map[int64]skytypes.Pub, 512)
 		pId               int64

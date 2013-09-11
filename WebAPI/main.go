@@ -1,6 +1,7 @@
 package main
 
 import (
+	"git.300brand.com/coverage/social"
 	"git.300brand.com/coverage"
 	"git.300brand.com/coverage/config"
 	"git.300brand.com/coverageservices/skynetstats"
@@ -139,6 +140,10 @@ func (m *RPCPublication) GetAll(r *http.Request, in *skytypes.MultiQuery, out *s
 
 func (m *RPCSearch) Search(r *http.Request, in *skytypes.SearchQuery, out *skytypes.SearchQueryResponse) (err error) {
 	return Search.SendOnce(nil, "Search", in, out)
+}
+
+func (m *RPCSocial) Article(r *http.Request, in *skytypes.ArticleId, out *social.Stats) (err error) {
+	return
 }
 
 // Main
