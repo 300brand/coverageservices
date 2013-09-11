@@ -3,11 +3,14 @@ package main
 import (
 	"bytes"
 	"database/sql"
+	jsonenc "encoding/json"
+	"flag"
 	"git.300brand.com/coverageservices/skytypes"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/rpc/json"
 	"log"
 	"net/http"
+	"os"
 )
 
 const APIURL = "http://192.168.20.20:8080/rpc"
@@ -42,37 +45,65 @@ WHERE
 ORDER BY p.object_id
 `
 
-func main() {
-	db, err := sql.Open("mysql", "root:@/coverage_db")
+var Config = struct {
+	Export, Save *bool
+	Import       *string
+}{
+	Export: flag.Bool("export", true, "Print results as JSON to STDOUT"),
+	Save:   flag.Bool("save", false, "Send processed publications to coverage network via JSON RPC API"),
+	Import: flag.String("import", "", "JSON file to import (used in place of MySQL data)"),
+}
+
+func Export(pubs []skytypes.Pub) {
+	b, err := jsonenc.MarshalIndent(pubs, "", "\t")
 	if err != nil {
 		log.Fatal(err)
+	}
+	os.Stdout.Write(b)
+}
+
+func JSONImport(file string) (pubs []skytypes.Pub, err error) {
+	// TODO
+	return
+}
+
+func MySQLImport() (pubs []skytypes.Pub, err error) {
+	pubs = make([]skytypes.Pub, 512)
+	var (
+		pubMap            = make(map[int64]skytypes.Pub, 512)
+		pId               int64
+		pName, pUrl, fUrl string
+	)
+	db, err := sql.Open("mysql", "root:@/coverage_db")
+	if err != nil {
+		return
 	}
 	defer db.Close()
 
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
-
-	var (
-		pubs              = make(map[int64]skytypes.Pub, 512)
-		pId               int64
-		pName, pUrl, fUrl string
-	)
 	for rows.Next() {
-		if err := rows.Scan(&pId, &pUrl, &pName, &fUrl); err != nil {
-			log.Fatal(err)
+		if err = rows.Scan(&pId, &pUrl, &pName, &fUrl); err != nil {
+			return
 		}
 
-		p, ok := pubs[pId]
+		p, ok := pubMap[pId]
 		if !ok {
 			p.URL = pUrl
 			p.Title = pName
 		}
 		p.Feeds = append(p.Feeds, fUrl)
-		pubs[pId] = p
+		pubMap[pId] = p
 	}
+	for _, pub := range pubMap {
+		pubs = append(pubs, pub)
+	}
+	return
+}
 
+func Save(pubs []skytypes.Pub) {
 	for _, pub := range pubs {
 		b, err := json.EncodeClientRequest("Publication.Add", pub)
 		if err != nil {
@@ -88,5 +119,31 @@ func main() {
 		if err = json.DecodeClientResponse(resp.Body, &response); err != nil {
 			log.Fatal(err)
 		}
+	}
+}
+
+func main() {
+	flag.Parse()
+
+	var (
+		pubs []skytypes.Pub
+		err  error
+	)
+
+	if file := *Config.Import; file != "" {
+		pubs, err = JSONImport(file)
+	} else {
+		pubs, err = MySQLImport()
+	}
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if *Config.Export {
+		Export(pubs)
+	}
+	if *Config.Save {
+		Save(pubs)
 	}
 }
