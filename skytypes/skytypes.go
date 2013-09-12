@@ -60,8 +60,11 @@ type Pub struct {
 
 type SearchQuery struct {
 	Q      string
-	Notify string
-	Dates  struct {
+	Notify struct {
+		Done   string
+		Social string
+	}
+	Dates struct {
 		Start, End time.Time
 	}
 }
