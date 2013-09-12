@@ -44,8 +44,7 @@ func (s *Service) Unregistered(service *service.Service) {
 // Service funcs
 
 func (s *Service) Article(ri *skynet.RequestInfo, in *coverage.Article, out *social.Stats) (err error) {
-	*out, err = social.Fetch(in.URL)
-	return
+	return social.Fetch(in.URL, out)
 }
 
 // Main

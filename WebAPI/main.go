@@ -1,9 +1,9 @@
 package main
 
 import (
-	"git.300brand.com/coverage/social"
 	"git.300brand.com/coverage"
 	"git.300brand.com/coverage/config"
+	"git.300brand.com/coverage/social"
 	"git.300brand.com/coverageservices/skynetstats"
 	"git.300brand.com/coverageservices/skytypes"
 	"github.com/gorilla/handlers"
@@ -27,6 +27,7 @@ type RPCArticle struct{}
 type RPCManager struct{}
 type RPCPublication struct{}
 type RPCSearch struct{}
+type RPCSocial struct{}
 
 const ServiceName = "WebAPI"
 
@@ -34,6 +35,7 @@ var (
 	_             service.ServiceDelegate = &Service{}
 	Manager       *client.ServiceClient
 	Search        *client.ServiceClient
+	Social        *client.ServiceClient
 	Stats         *client.ServiceClient
 	StorageReader *client.ServiceClient
 	StorageWriter *client.ServiceClient
@@ -50,6 +52,7 @@ func init() {
 	jsonrpc.RegisterService(new(RPCManager), "Manager")
 	jsonrpc.RegisterService(new(RPCPublication), "Publication")
 	jsonrpc.RegisterService(new(RPCSearch), "Search")
+	jsonrpc.RegisterService(new(RPCSocial), "Social")
 }
 
 // Funcs required for ServiceDelegate
@@ -142,8 +145,12 @@ func (m *RPCSearch) Search(r *http.Request, in *skytypes.SearchQuery, out *skyty
 	return Search.SendOnce(nil, "Search", in, out)
 }
 
-func (m *RPCSocial) Article(r *http.Request, in *skytypes.ArticleId, out *social.Stats) (err error) {
-	return
+func (m *RPCSocial) Article(r *http.Request, in *skytypes.ObjectId, out *social.Stats) (err error) {
+	a := new(coverage.Article)
+	if err = StorageReader.Send(nil, "Article", in, a); err != nil {
+		return err
+	}
+	return Social.SendOnce(nil, "Article", a, out)
 }
 
 // Main
@@ -158,6 +165,7 @@ func main() {
 
 	Manager = c.GetService("Manager", "", "", "")
 	Search = c.GetService("Search", "", "", "")
+	Social = c.GetService("Social", "", "", "")
 	Stats = c.GetService("Stats", "", "", "")
 	StorageReader = c.GetService("StorageReader", "", "", "")
 	StorageWriter = c.GetService("StorageWriter", "", "", "")
