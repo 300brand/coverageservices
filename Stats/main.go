@@ -5,11 +5,11 @@ import (
 	"git.300brand.com/coverage/config"
 	"git.300brand.com/coverageservices/skynetstats"
 	"git.300brand.com/coverageservices/skytypes"
+	"github.com/jbaikge/logger"
 	"github.com/jbaikge/statsd"
 	"github.com/skynetservices/skynet"
 	"github.com/skynetservices/skynet/client"
 	"github.com/skynetservices/skynet/service"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -36,17 +36,17 @@ func (s *Service) MethodCalled(m string) {}
 
 func (s *Service) MethodCompleted(m string, d int64, err error) {
 	if err != nil {
-		log.Printf("Stats.%s error: %s", m, err)
+		logger.Error.Printf("Stats.%s error: %s", m, err)
 	}
 }
 
 func (s *Service) Registered(service *service.Service) {
 	go func(addr string) {
 		for {
-			log.Printf("Connecting to %s", addr)
+			logger.Debug.Printf("Connecting to %s", addr)
 			newConn, err := statsd.Dial(addr)
 			if err != nil {
-				log.Printf("Could not connect to Statsd Server: %s", err)
+				logger.Error.Printf("Could not connect to Statsd Server: %s", err)
 			}
 			// Swap connections, close out the old one and start using the fresh
 			// connection
@@ -142,9 +142,6 @@ func statJoin(paths ...string) string {
 // Main
 
 func main() {
-	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
-	log.SetPrefix(ServiceName + " ")
-
 	cc, _ := skynet.GetClientConfig()
 	c := client.NewClient(cc)
 
