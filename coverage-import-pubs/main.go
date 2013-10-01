@@ -49,7 +49,7 @@ var Config = struct {
 	Export, Save *bool
 	Import       *string
 }{
-	Export: flag.Bool("export", true, "Print results as JSON to STDOUT"),
+	Export: flag.Bool("export", false, "Print results as JSON to STDOUT"),
 	Save:   flag.Bool("save", false, "Send processed publications to coverage network via JSON RPC API"),
 	Import: flag.String("import", "", "JSON file to import (used in place of MySQL data)"),
 }
@@ -63,7 +63,13 @@ func Export(pubs []skytypes.Pub) {
 }
 
 func JSONImport(file string) (pubs []skytypes.Pub, err error) {
-	// TODO
+	f, err := os.Open(file)
+	if err != nil {
+		return
+	}
+	dec := jsonenc.NewDecoder(f)
+	dec.UseNumber()
+	err = dec.Decode(&pubs)
 	return
 }
 
