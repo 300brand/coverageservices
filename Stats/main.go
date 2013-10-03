@@ -1,8 +1,9 @@
-package main
+package Stats
 
 import (
 	"fmt"
 	"git.300brand.com/coverageservices/service"
+	"git.300brand.com/coverageservices/types"
 	"github.com/jbaikge/disgo"
 	"github.com/jbaikge/logger"
 	"github.com/jbaikge/statsd"
@@ -11,85 +12,85 @@ import (
 	"time"
 )
 
-type Service struct {
+type Stats struct {
 	client *disgo.Client
+	config cfgStats
+	stats  *statsd.Client
 }
 
-const (
-	Rate = float64(1)
-)
-
-var (
-	_     service.Service = new(Service)
-	stats *statsd.Client
-)
-
-// Funcs required for ServiceDelegate
-
-func (s *Service) MethodCalled(m string) {}
-
-func (s *Service) MethodCompleted(m string, d int64, err error) {
-	if err != nil {
-		logger.Error.Printf("Stats.%s error: %s", m, err)
-	}
+type cfgStats struct {
+	Rate      float64
+	Reconnect time.Duration
+	Statsd    string
 }
 
-func (s *Service) Registered(service *service.Service) {
+var _ service.Service = new(Stats)
+
+func init() {
+	service.Register("Stats", &Stats{
+		config: cfgStats{
+			Rate:      1.0,
+			Reconnect: time.Minute,
+			Statsd:    "127.0.0.1:8125",
+		},
+	})
+}
+
+// Funcs required by Service
+
+func (s *Stats) ConfigOptions() interface{} {
+	return s.config
+}
+
+func (s *Stats) Start(client *disgo.Client) (err error) {
+	s.client = client
 	go func(addr string) {
 		for {
 			logger.Debug.Printf("Connecting to %s", addr)
 			newConn, err := statsd.Dial(addr)
 			if err != nil {
 				logger.Error.Printf("Could not connect to Statsd Server: %s", err)
+				<-time.After(3 * time.Second)
+				continue
 			}
 			// Swap connections, close out the old one and start using the fresh
 			// connection
-			oldConn := stats
-			stats = newConn
+			oldConn := s.stats
+			s.stats = newConn
 			if oldConn != nil {
 				oldConn.Close()
 			}
-			<-time.After(time.Minute)
+			<-time.After(s.config.Reconnect)
 		}
-	}(config.StatsdServer.Address)
-	skynetstats.Start(s.Config, Stats)
-}
-
-func (s *Service) Started(service *service.Service) {}
-
-func (s *Service) Stopped(service *service.Service) {
-	stats.Close()
-}
-
-func (s *Service) Unregistered(service *service.Service) {
-	skynetstats.Stop()
+	}(s.config.Statsd)
+	return
 }
 
 // Service funcs
 
-func (s *Service) Completed(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
+func (s *Stats) Completed(stat *types.Stat, out *disgo.NullType) (err error) {
 	base := statBase(stat)
-	stats.Increment(statJoin(base, "Calls"), 1, Rate)
+	s.stats.Increment(statJoin(base, "Calls"), 1, s.config.Rate)
 	if stat.Error != nil {
-		stats.Increment(statJoin(base, "Errors"), 1, Rate)
+		s.stats.Increment(statJoin(base, "Errors"), 1, s.config.Rate)
 	}
-	stats.Duration(statJoin(base, "Duration"), stat.Duration, Rate)
+	s.stats.Duration(statJoin(base, "Duration"), stat.Duration, s.config.Rate)
 	return
 }
 
-func (s *Service) Decrement(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
-	return stats.Decrement(statBase(stat), stat.Count, Rate)
+func (s *Stats) Decrement(stat *types.Stat, out *disgo.NullType) (err error) {
+	return s.stats.Decrement(statBase(stat), stat.Count, s.config.Rate)
 }
 
-func (s *Service) Gauge(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
-	return stats.Gauge(statBase(stat), stat.Count, Rate)
+func (s *Stats) Gauge(stat *types.Stat, out *disgo.NullType) (err error) {
+	return s.stats.Gauge(statBase(stat), stat.Count, s.config.Rate)
 }
 
-func (s *Service) Increment(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
-	return stats.Increment(statBase(stat), stat.Count, Rate)
+func (s *Stats) Increment(stat *types.Stat, out *disgo.NullType) (err error) {
+	return s.stats.Increment(statBase(stat), stat.Count, s.config.Rate)
 }
 
-func (s *Service) Resources(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
+func (s *Stats) Resources(stat *types.Stat, out *disgo.NullType) (err error) {
 	base := statBase(stat)
 	attr := map[string]int{
 		"Alloc":      int(stat.Mem.Alloc),
@@ -104,27 +105,27 @@ func (s *Service) Resources(ri *skynet.RequestInfo, stat *skytypes.Stat, out *sk
 		"Goroutines": stat.Goroutines,
 	}
 	for suffix, value := range attr {
-		stats.Gauge(statJoin(base, suffix), value, Rate)
+		s.stats.Gauge(statJoin(base, suffix), value, s.config.Rate)
 	}
-	stats.Increment(statJoin(base, "Heartbeat"), 1, Rate)
+	s.stats.Increment(statJoin(base, "Heartbeat"), 1, s.config.Rate)
 	return
 }
 
-func (s *Service) Duration(ri *skynet.RequestInfo, stat *skytypes.Stat, out *skytypes.NullType) (err error) {
-	return stats.Duration(statBase(stat), stat.Duration, Rate)
+func (s *Stats) Duration(stat *types.Stat, out *disgo.NullType) (err error) {
+	return s.stats.Duration(statBase(stat), stat.Duration, s.config.Rate)
 }
 
 // Support funcs
 
-func statBase(stat *skytypes.Stat) (s string) {
+func statBase(stat *types.Stat) (s string) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		hostname = fmt.Sprintf("Unknown-%d", os.Getegid())
 	}
 	if stat.Name == "" {
-		s = fmt.Sprintf("%s.%s.%s.%s", stat.Config.Region, stat.Config.Version, stat.Config.Name, hostname)
+		s = fmt.Sprintf("%s", hostname)
 	} else {
-		s = fmt.Sprintf("%s.%s.%s.%s.%s", stat.Config.Region, stat.Config.Version, stat.Config.Name, stat.Name, hostname)
+		s = fmt.Sprintf("%s.%s", stat.Name, hostname)
 	}
 	return
 }
