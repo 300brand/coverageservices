@@ -2,32 +2,26 @@ package main
 
 import (
 	"fmt"
-	"git.300brand.com/coverage/config"
-	"git.300brand.com/coverageservices/skynetstats"
-	"git.300brand.com/coverageservices/skytypes"
+	"git.300brand.com/coverageservices/service"
+	"github.com/jbaikge/disgo"
 	"github.com/jbaikge/logger"
 	"github.com/jbaikge/statsd"
-	"github.com/skynetservices/skynet"
-	"github.com/skynetservices/skynet/client"
-	"github.com/skynetservices/skynet/service"
 	"os"
 	"strings"
 	"time"
 )
 
 type Service struct {
-	Config *skynet.ServiceConfig
+	client *disgo.Client
 }
 
 const (
-	ServiceName = "Stats"
-	Rate        = float64(1)
+	Rate = float64(1)
 )
 
 var (
-	_     service.ServiceDelegate = &Service{}
+	_     service.Service = new(Service)
 	stats *statsd.Client
-	Stats *client.ServiceClient
 )
 
 // Funcs required for ServiceDelegate
@@ -137,23 +131,4 @@ func statBase(stat *skytypes.Stat) (s string) {
 
 func statJoin(paths ...string) string {
 	return strings.Join(paths, ".")
-}
-
-// Main
-
-func main() {
-	cc, _ := skynet.GetClientConfig()
-	c := client.NewClient(cc)
-
-	Stats = c.GetService("Stats", "", "", "")
-
-	sc, _ := skynet.GetServiceConfig()
-	sc.Name = ServiceName
-	sc.Region = "Stats"
-	sc.Version = "1"
-
-	s := service.CreateService(&Service{sc}, sc)
-	defer s.Shutdown()
-
-	s.Start(true).Wait()
 }

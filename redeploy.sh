@@ -9,7 +9,7 @@ export SKYNET_DZHOST=192.168.20.20:8046
 # sky deploy git.300brand.com/coverageservices/Search -host=192.168.20.20
 # exit
 
-go install -v git.300brand.com/coverageservices/{Stats,Article,Feed,Search,Social,StorageReader,StorageWriter,Manager,Queue,WebAPI} || exit
+# go install -v git.300brand.com/coverageservices/{Stats,Article,Feed,Search,Social,StorageReader,StorageWriter,Manager,Queue,WebAPI} || exit
 
 sky stop
 sleep 1
