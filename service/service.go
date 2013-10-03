@@ -5,7 +5,11 @@ import (
 )
 
 type Service interface {
+	// Provides a disgo Client for the service to use
 	DisgoClient(client *disgo.Client)
+	// Called after all services are registered and before the disgo server
+	// starts
+	Start() error
 }
 
 var services = make(map[string]Service)
