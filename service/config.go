@@ -1,7 +1,6 @@
-package main
+package service
 
 import (
-	"git.300brand.com/coverageservices/service"
 	"github.com/jbaikge/logger"
 	"io/ioutil"
 	"launchpad.net/goyaml"
@@ -9,23 +8,24 @@ import (
 )
 
 type cfgGearman struct{ Servers []string }
-type cfgMongo struct{ Servers []string }
 
 var Config = struct {
 	Gearman       cfgGearman
-	Mongo         cfgMongo
-	Personalities map[string]bool
+	Personalities map[string]*bool
+	Services      map[string]interface{}
 }{
 	cfgGearman{[]string{":4730"}},
-	cfgMongo{[]string{":4730"}},
-	make(map[string]bool),
+	make(map[string]*bool),
+	make(map[string]interface{}),
 }
 
 func InitConfig(filename string) {
-	// Prefill the personalities
-	for name := range service.GetServices() {
-		Config.Personalities[name] = true
-	}
+	// // Prefill the personalities
+	// for name := range services {
+	// 	var t *bool
+	// 	Config.Personalities[name] = t
+	// 	flag.BoolVar(t, "personality."+name, false, "Disables")
+	// }
 	// Attempt to read config from filename
 	f, err := os.Open(filename)
 	if err != nil {

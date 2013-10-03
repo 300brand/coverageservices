@@ -1,8 +1,7 @@
-package skytypes
+package types
 
 import (
 	"git.300brand.com/coverage"
-	"github.com/skynetservices/skynet"
 	"labix.org/v2/mgo/bson"
 	"runtime"
 	"time"
@@ -27,8 +26,6 @@ type Inc struct {
 	Id    bson.ObjectId
 	Delta int
 }
-
-type NullType struct{}
 
 type ObjectIds struct {
 	Ids []bson.ObjectId
@@ -86,7 +83,6 @@ type SearchResults struct {
 }
 
 type Stat struct {
-	Config     *skynet.ServiceConfig
 	Name       string
 	Count      int
 	Duration   time.Duration
@@ -94,5 +90,3 @@ type Stat struct {
 	Goroutines int
 	Mem        runtime.MemStats
 }
-
-var Null = &NullType{}
