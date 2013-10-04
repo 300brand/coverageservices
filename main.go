@@ -9,6 +9,7 @@ import (
 	"launchpad.net/goyaml"
 
 	_ "git.300brand.com/coverageservices/Stats"
+	_ "git.300brand.com/coverageservices/StorageReader"
 )
 
 var (
