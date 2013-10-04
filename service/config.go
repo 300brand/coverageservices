@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"launchpad.net/goyaml"
 	"os"
+	"reflect"
 )
 
 type cfgGearman struct{ Servers []string }
@@ -27,6 +28,13 @@ func InitConfig(filename string) {
 	// 	flag.BoolVar(t, "personality."+name, false, "Disables")
 	// }
 	// Attempt to read config from filename
+	svcCopy := make(map[string]reflect.Type)
+	for name := range Config.Services {
+		svcCopy[name] = reflect.TypeOf(Config.Services[name])
+		logger.Debug.Printf("%v", svcCopy[name].Kind() == reflect.Ptr)
+	}
+
+	logger.Debug.Printf("%+v", Config.Services)
 	f, err := os.Open(filename)
 	if err != nil {
 		logger.Warn.Print(err)
@@ -43,4 +51,17 @@ func InitConfig(filename string) {
 	if err := goyaml.Unmarshal(data, &Config); err != nil {
 		logger.Error.Fatalf("There was an error parsing %s: %s", filename, err)
 	}
+	logger.Debug.Printf("Config.Services: %+v", Config.Services)
+	logger.Debug.Printf("svcCopy: %+v", svcCopy)
+
+	for name, v := range svcCopy {
+		logger.Debug.Printf("%s: %+v", name, v)
+		// value := Config.Services[name]
+		// newV := reflect.ValueOf(value)
+		// v.Elem().Set(newV.)
+		// logger.Debug.Printf("%s: %+v", name, v.Interface())
+	}
+
+	logger.Debug.Printf("Config.Services: %+v", Config.Services)
+	logger.Debug.Printf("%+v", services["StorageReader"])
 }
