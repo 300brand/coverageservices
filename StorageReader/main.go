@@ -7,6 +7,7 @@ import (
 	"git.300brand.com/coverageservices/types"
 	"github.com/jbaikge/disgo"
 	"github.com/jbaikge/logger"
+	"github.com/stvp/go-toml-config"
 )
 
 type StorageReader struct {
@@ -18,9 +19,9 @@ type StorageReader struct {
 type cfgStorageReader struct {
 	// Prefix for database names (used when running production and testing in
 	// same environment)
-	Prefix string
+	Prefix *string
 	// Addresses of MongoDB, see labix.org/mgo for format details
-	MongoDB string
+	MongoDB *string
 }
 
 var _ service.Service = new(StorageReader)
@@ -28,24 +29,20 @@ var _ service.Service = new(StorageReader)
 func init() {
 	service.Register("StorageReader", &StorageReader{
 		config: cfgStorageReader{
-			Prefix:  "A_",
-			MongoDB: "127.0.0.1",
+			Prefix:  config.String("StorageReader.prefix", "A_"),
+			MongoDB: config.String("StorageReader.mongodb", "127.0.0.1"),
 		},
 	})
 }
 
 // Funcs required for Service
 
-func (s *StorageReader) ConfigOptions() interface{} {
-	return &s.config
-}
-
 func (s *StorageReader) Start(client *disgo.Client) (err error) {
 	s.client = client
 
-	logger.Debug.Printf("StorageReader: Connecting to MongoDB %s", s.config.MongoDB)
-	s.m = mongo.New(s.config.MongoDB)
-	s.m.Prefix = s.config.Prefix
+	logger.Debug.Printf("StorageReader: Connecting to MongoDB %s", *s.config.MongoDB)
+	s.m = mongo.New(*s.config.MongoDB)
+	s.m.Prefix = *s.config.Prefix
 	if err = s.m.Connect(); err != nil {
 		logger.Error.Printf("StorageReader: Failed to connect to MongoDB: %s", err)
 		return

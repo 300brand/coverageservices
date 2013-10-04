@@ -7,6 +7,7 @@ import (
 	"github.com/jbaikge/disgo"
 	"github.com/jbaikge/logger"
 	"github.com/jbaikge/statsd"
+	"github.com/stvp/go-toml-config"
 	"os"
 	"strings"
 	"time"
@@ -19,9 +20,9 @@ type Stats struct {
 }
 
 type cfgStats struct {
-	Rate      float64
-	Reconnect time.Duration
-	Statsd    string
+	Rate      *float64
+	Reconnect *time.Duration
+	Statsd    *string
 }
 
 var _ service.Service = new(Stats)
@@ -29,21 +30,19 @@ var _ service.Service = new(Stats)
 func init() {
 	service.Register("Stats", &Stats{
 		config: cfgStats{
-			Rate:      1.0,
-			Reconnect: time.Minute,
-			Statsd:    "127.0.0.1:8125",
+			Rate:      config.Float64("Stats.rate", 1),
+			Reconnect: config.Duration("Stats.reconnect", time.Minute),
+			Statsd:    config.String("Stats.statsd", "127.0.0.1:8125"),
 		},
 	})
 }
 
 // Funcs required by Service
 
-func (s *Stats) ConfigOptions() interface{} {
-	return s.config
-}
-
 func (s *Stats) Start(client *disgo.Client) (err error) {
 	s.client = client
+	fmt.Printf("%+v\n", s.config)
+	return
 	go func(addr string) {
 		for {
 			logger.Debug.Printf("Connecting to %s", addr)
@@ -60,9 +59,9 @@ func (s *Stats) Start(client *disgo.Client) (err error) {
 			if oldConn != nil {
 				oldConn.Close()
 			}
-			<-time.After(s.config.Reconnect)
+			<-time.After(*s.config.Reconnect)
 		}
-	}(s.config.Statsd)
+	}(*s.config.Statsd)
 	return
 }
 
@@ -70,24 +69,24 @@ func (s *Stats) Start(client *disgo.Client) (err error) {
 
 func (s *Stats) Completed(stat *types.Stat, out *disgo.NullType) (err error) {
 	base := statBase(stat)
-	s.stats.Increment(statJoin(base, "Calls"), 1, s.config.Rate)
+	s.stats.Increment(statJoin(base, "Calls"), 1, *s.config.Rate)
 	if stat.Error != nil {
-		s.stats.Increment(statJoin(base, "Errors"), 1, s.config.Rate)
+		s.stats.Increment(statJoin(base, "Errors"), 1, *s.config.Rate)
 	}
-	s.stats.Duration(statJoin(base, "Duration"), stat.Duration, s.config.Rate)
+	s.stats.Duration(statJoin(base, "Duration"), stat.Duration, *s.config.Rate)
 	return
 }
 
 func (s *Stats) Decrement(stat *types.Stat, out *disgo.NullType) (err error) {
-	return s.stats.Decrement(statBase(stat), stat.Count, s.config.Rate)
+	return s.stats.Decrement(statBase(stat), stat.Count, *s.config.Rate)
 }
 
 func (s *Stats) Gauge(stat *types.Stat, out *disgo.NullType) (err error) {
-	return s.stats.Gauge(statBase(stat), stat.Count, s.config.Rate)
+	return s.stats.Gauge(statBase(stat), stat.Count, *s.config.Rate)
 }
 
 func (s *Stats) Increment(stat *types.Stat, out *disgo.NullType) (err error) {
-	return s.stats.Increment(statBase(stat), stat.Count, s.config.Rate)
+	return s.stats.Increment(statBase(stat), stat.Count, *s.config.Rate)
 }
 
 func (s *Stats) Resources(stat *types.Stat, out *disgo.NullType) (err error) {
@@ -105,14 +104,14 @@ func (s *Stats) Resources(stat *types.Stat, out *disgo.NullType) (err error) {
 		"Goroutines": stat.Goroutines,
 	}
 	for suffix, value := range attr {
-		s.stats.Gauge(statJoin(base, suffix), value, s.config.Rate)
+		s.stats.Gauge(statJoin(base, suffix), value, *s.config.Rate)
 	}
-	s.stats.Increment(statJoin(base, "Heartbeat"), 1, s.config.Rate)
+	s.stats.Increment(statJoin(base, "Heartbeat"), 1, *s.config.Rate)
 	return
 }
 
 func (s *Stats) Duration(stat *types.Stat, out *disgo.NullType) (err error) {
-	return s.stats.Duration(statBase(stat), stat.Duration, s.config.Rate)
+	return s.stats.Duration(statBase(stat), stat.Duration, *s.config.Rate)
 }
 
 // Support funcs
