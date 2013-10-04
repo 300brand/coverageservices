@@ -1,109 +1,86 @@
-package main
+package StorageReader
 
 import (
 	"git.300brand.com/coverage"
-	"git.300brand.com/coverage/config"
 	"git.300brand.com/coverage/storage/mongo"
-	"git.300brand.com/coverageservices/skynetstats"
-	"git.300brand.com/coverageservices/skytypes"
-	"github.com/skynetservices/skynet"
-	"github.com/skynetservices/skynet/client"
-	"github.com/skynetservices/skynet/service"
-	"log"
+	"git.300brand.com/coverageservices/service"
+	"git.300brand.com/coverageservices/types"
+	"github.com/jbaikge/disgo"
+	"github.com/jbaikge/logger"
 )
 
-type Service struct {
-	Config *skynet.ServiceConfig
+type StorageReader struct {
+	client *disgo.Client
+	config cfgStorageReader
+	m      *mongo.Mongo
 }
 
-const ServiceName = "StorageReader"
-
-var (
-	_     service.ServiceDelegate = &Service{}
-	m     *mongo.Mongo
-	Stats *client.ServiceClient
-)
-
-// Funcs required for ServiceDelegate
-
-func (s *Service) MethodCalled(m string) {}
-
-func (s *Service) MethodCompleted(m string, d int64, err error) {
-	skynetstats.Completed(m, d, err)
+type cfgStorageReader struct {
+	// Prefix for database names (used when running production and testing in
+	// same environment)
+	Prefix string
+	// Addresses of MongoDB, see labix.org/mgo for format details
+	MongoDB string
 }
 
-func (s *Service) Registered(service *service.Service) {
-	skynetstats.Start(s.Config, Stats)
+var _ service.Service = new(StorageReader)
+
+func init() {
+	service.Register("StorageReader", &StorageReader{
+		config: cfgStorageReader{
+			Prefix:  "A_",
+			MongoDB: "127.0.0.1",
+		},
+	})
 }
 
-func (s *Service) Started(service *service.Service) {
-	log.Printf("Connecting to MongoDB %s", config.Mongo.Host)
-	m = mongo.New(config.Mongo.Host)
-	m.Prefix = "A_"
-	if err := m.Connect(); err != nil {
-		log.Fatalf("Failed to connect to MongoDB: %s", err)
+// Funcs required for Service
+
+func (s *StorageReader) ConfigOptions() interface{} {
+	return &s.config
+}
+
+func (s *StorageReader) Start(client *disgo.Client) (err error) {
+	s.client = client
+
+	logger.Debug.Printf("StorageReader: Connecting to MongoDB %s", s.config.MongoDB)
+	s.m = mongo.New(s.config.MongoDB)
+	s.m.Prefix = s.config.Prefix
+	if err = s.m.Connect(); err != nil {
+		logger.Error.Printf("StorageReader: Failed to connect to MongoDB: %s", err)
+		return
 	}
-	log.Println("Connected to MongoDB")
-}
-
-func (s *Service) Stopped(service *service.Service) {
-	log.Println("Closing MongoDB connection")
-	m.Close()
-}
-
-func (s *Service) Unregistered(service *service.Service) {
-	skynetstats.Stop()
+	logger.Debug.Println("StorageReader: Connected to MongoDB")
+	return
 }
 
 // Service funcs
 
-func (s *Service) Article(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *coverage.Article) (err error) {
-	return m.GetArticle(in.Id, out)
+func (s *StorageReader) Article(in *types.ObjectId, out *coverage.Article) error {
+	return s.m.GetArticle(in.Id, out)
 }
 
-func (s *Service) Feed(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *coverage.Feed) (err error) {
-	return m.GetFeed(in.Id, out)
+func (s *StorageReader) Feed(in *types.ObjectId, out *coverage.Feed) error {
+	return s.m.GetFeed(in.Id, out)
 }
 
-func (s *Service) OldestFeed(ri *skynet.RequestInfo, in *skytypes.ObjectIds, out *coverage.Feed) (err error) {
-	return m.GetOldestFeed(in.Ids, out)
+func (s *StorageReader) OldestFeed(in *types.ObjectIds, out *coverage.Feed) error {
+	return s.m.GetOldestFeed(in.Ids, out)
 }
 
-func (s *Service) Publication(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *coverage.Publication) (err error) {
-	return m.GetPublication(in.Id, out)
+func (s *StorageReader) Publication(in *types.ObjectId, out *coverage.Publication) error {
+	return s.m.GetPublication(in.Id, out)
 }
 
-func (s *Service) Publications(ri *skynet.RequestInfo, in *skytypes.MultiQuery, out *skytypes.MultiPubs) (err error) {
-	if out.Total, err = m.C.Publications.Find(in.Query).Count(); err != nil {
+func (s *StorageReader) Publications(in *types.MultiQuery, out *types.MultiPubs) (err error) {
+	if out.Total, err = s.m.C.Publications.Find(in.Query).Count(); err != nil {
 		return
 	}
 	out.Query = *in
 	out.Publications = make([]*coverage.Publication, 0, in.Limit)
-	return m.GetPublications(in.Query, in.Sort, in.Skip, in.Limit, &out.Publications)
+	return s.m.GetPublications(in.Query, in.Sort, in.Skip, in.Limit, &out.Publications)
 }
 
-func (s *Service) Search(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *coverage.Search) (err error) {
-	return m.GetSearch(in.Id, out)
-}
-
-// Main
-
-func main() {
-	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
-	log.SetPrefix(ServiceName + " ")
-
-	cc, _ := skynet.GetClientConfig()
-	c := client.NewClient(cc)
-
-	Stats = c.GetService("Stats", "", "", "")
-
-	sc, _ := skynet.GetServiceConfig()
-	sc.Name = ServiceName
-	sc.Region = "Storage"
-	sc.Version = "1"
-
-	s := service.CreateService(&Service{sc}, sc)
-	defer s.Shutdown()
-
-	s.Start(true).Wait()
+func (s *StorageReader) Search(in *types.ObjectId, out *coverage.Search) error {
+	return s.m.GetSearch(in.Id, out)
 }
