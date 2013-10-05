@@ -12,27 +12,21 @@ import (
 
 type StorageReader struct {
 	client *disgo.Client
-	config cfgStorageReader
 	m      *mongo.Mongo
-}
-
-type cfgStorageReader struct {
-	// Prefix for database names (used when running production and testing in
-	// same environment)
-	Prefix *string
-	// Addresses of MongoDB, see labix.org/mgo for format details
-	MongoDB *string
 }
 
 var _ service.Service = new(StorageReader)
 
+var (
+	// Prefix for database names (used when running production and testing in
+	// same environment)
+	cfgPrefix = config.String("StorageReader.prefix", "A_")
+	// Addresses of MongoDB, see labix.org/mgo for format details
+	cfgMongoDB = config.String("StorageReader.mongodb", "127.0.0.1")
+)
+
 func init() {
-	service.Register("StorageReader", &StorageReader{
-		config: cfgStorageReader{
-			Prefix:  config.String("StorageReader.prefix", "A_"),
-			MongoDB: config.String("StorageReader.mongodb", "127.0.0.1"),
-		},
-	})
+	service.Register("StorageReader", new(StorageReader))
 }
 
 // Funcs required for Service
@@ -40,9 +34,9 @@ func init() {
 func (s *StorageReader) Start(client *disgo.Client) (err error) {
 	s.client = client
 
-	logger.Debug.Printf("StorageReader: Connecting to MongoDB %s", *s.config.MongoDB)
-	s.m = mongo.New(*s.config.MongoDB)
-	s.m.Prefix = *s.config.Prefix
+	logger.Debug.Printf("StorageReader: Connecting to MongoDB %s", *cfgMongoDB)
+	s.m = mongo.New(*cfgMongoDB)
+	s.m.Prefix = *cfgPrefix
 	if err = s.m.Connect(); err != nil {
 		logger.Error.Printf("StorageReader: Failed to connect to MongoDB: %s", err)
 		return
