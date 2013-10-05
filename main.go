@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	_ "git.300brand.com/coverageservices/Article"
+	_ "git.300brand.com/coverageservices/Social"
 	_ "git.300brand.com/coverageservices/Stats"
 	_ "git.300brand.com/coverageservices/StorageReader"
 	_ "git.300brand.com/coverageservices/StorageWriter"
