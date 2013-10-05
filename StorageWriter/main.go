@@ -1,145 +1,116 @@
-package main
+package StorageWriter
 
 import (
 	"git.300brand.com/coverage"
-	"git.300brand.com/coverage/config"
 	"git.300brand.com/coverage/storage/mongo"
-	"git.300brand.com/coverageservices/skynetstats"
-	"git.300brand.com/coverageservices/skytypes"
-	"github.com/skynetservices/skynet"
-	"github.com/skynetservices/skynet/client"
-	"github.com/skynetservices/skynet/service"
+	"git.300brand.com/coverageservices/service"
+	"git.300brand.com/coverageservices/types"
+	"github.com/jbaikge/disgo"
+	"github.com/jbaikge/logger"
+	"github.com/stvp/go-toml-config"
 	"labix.org/v2/mgo/bson"
-	"log"
 	"time"
 )
 
-type Service struct {
-	Config *skynet.ServiceConfig
+type StorageWriter struct {
+	client *disgo.Client
+	m      *mongo.Mongo
 }
 
-const ServiceName = "StorageWriter"
+var _ service.Service = new(StorageWriter)
 
 var (
-	_     service.ServiceDelegate = &Service{}
-	m     *mongo.Mongo
-	Stats *client.ServiceClient
+	// Prefix for database names (used when running production and testing in
+	// same environment)
+	cfgPrefix = config.String("StorageWriter.prefix", "A_")
+	// Addresses of MongoDB, see labix.org/mgo for format details
+	cfgMongoDB = config.String("StorageWriter.mongodb", "127.0.0.1")
 )
 
-// Funcs required for ServiceDelegate
-
-func (s *Service) MethodCalled(m string) {}
-
-func (s *Service) MethodCompleted(m string, d int64, err error) {
-	skynetstats.Completed(m, d, err)
+func init() {
+	service.Register("StorageWriter", new(StorageWriter))
 }
 
-func (s *Service) Registered(service *service.Service) {
-	skynetstats.Start(s.Config, Stats)
-}
+// Funcs required for Service
 
-func (s *Service) Started(service *service.Service) {
-	log.Printf("Connecting to MongoDB %s", config.Mongo.Host)
-	m = mongo.New(config.Mongo.Host)
-	m.Prefix = "A_"
-	if err := m.Connect(); err != nil {
-		log.Fatalf("Failed to connect to MongoDB: %s", err)
+func (s *StorageWriter) Start(client *disgo.Client) (err error) {
+	s.client = client
+
+	logger.Debug.Printf("StorageWriter: Connecting to MongoDB %s", *cfgMongoDB)
+	s.m = mongo.New(*cfgMongoDB)
+	s.m.Prefix = *cfgPrefix
+	if err = s.m.Connect(); err != nil {
+		logger.Error.Printf("StorageWriter: Failed to connect to MongoDB: %s", err)
+		return
 	}
-	log.Println("Connected to MongoDB")
-}
-
-func (s *Service) Stopped(service *service.Service) {
-	log.Println("Closing MongoDB connection")
-	m.Close()
-}
-
-func (s *Service) Unregistered(service *service.Service) {
-	skynetstats.Stop()
+	logger.Debug.Println("StorageWriter: Connected to MongoDB")
+	return
 }
 
 // Service funcs
 
-func (s *Service) DateSearch(ri *skynet.RequestInfo, in *skytypes.DateSearch, out *skytypes.NullType) (err error) {
-	return m.DateSearch(in.Id, in.Query, in.Date)
+func (s *StorageWriter) DateSearch(in *types.DateSearch, out *disgo.NullType) (err error) {
+	return s.m.DateSearch(in.Id, in.Query, in.Date)
 }
 
-func (s *Service) NewSearch(ri *skynet.RequestInfo, in *coverage.Search, out *coverage.Search) (err error) {
+func (s *StorageWriter) NewSearch(in *coverage.Search, out *coverage.Search) (err error) {
 	*out = *in
 	out.Start = time.Now()
 	out.Id = bson.NewObjectId()
-	return m.UpdateSearch(out)
+	return s.m.UpdateSearch(out)
 }
 
-func (s *Service) Article(ri *skynet.RequestInfo, in *coverage.Article, out *coverage.Article) (err error) {
+func (s *StorageWriter) Article(in *coverage.Article, out *coverage.Article) (err error) {
 	defer func() {
 		*out = *in
 	}()
 
-	if err = m.AddURL(in.URL, in.ID); err != nil {
-		log.Printf("Duplicate URL: %s", in.URL)
+	if err = s.m.AddURL(in.URL, in.ID); err != nil {
+		logger.Info.Printf("Duplicate URL: %s", in.URL)
 		return
 	}
-	if err = m.UpdateArticle(in); err != nil {
+	if err = s.m.UpdateArticle(in); err != nil {
 		return
 	}
 	go func(a *coverage.Article) {
 		start := time.Now()
-		if err := m.AddKeywords(in); err != nil {
-			log.Printf("Error saving keywords: %s", err)
+		if err := s.m.AddKeywords(in); err != nil {
+			logger.Error.Printf("Error saving keywords: %s", err)
 		}
-		skynetstats.Duration(time.Since(start), "ArticleKeywords")
+		s.client.Call("Stats.Duration", types.Stat{
+			Name:     "StorageWriter.Article.AddKeywords",
+			Duration: time.Since(start),
+		}, disgo.Null)
 	}(in)
 	return
 }
 
-func (s *Service) Feed(ri *skynet.RequestInfo, in *coverage.Feed, out *coverage.Feed) (err error) {
+func (s *StorageWriter) Feed(in *coverage.Feed, out *coverage.Feed) (err error) {
 	defer func() {
 		*out = *in
 	}()
 
-	if err = m.UpdateFeed(in); err != nil {
+	if err = s.m.UpdateFeed(in); err != nil {
 		return
 	}
 	return
 }
 
-func (s *Service) Publication(ri *skynet.RequestInfo, in *coverage.Publication, out *coverage.Publication) (err error) {
+func (s *StorageWriter) Publication(in *coverage.Publication, out *coverage.Publication) (err error) {
 	defer func() {
 		*out = *in
 	}()
 
-	if err = m.UpdatePublication(in); err != nil {
+	if err = s.m.UpdatePublication(in); err != nil {
 		return
 	}
 	return
 }
 
-func (s *Service) PubIncArticles(ri *skynet.RequestInfo, in *skytypes.Inc, out *skytypes.NullType) (err error) {
-	return m.PublicationIncArticles(in.Id, in.Delta)
+func (s *StorageWriter) PubIncArticles(in *types.Inc, out *disgo.NullType) (err error) {
+	return s.m.PublicationIncArticles(in.Id, in.Delta)
 }
 
-func (s *Service) PubIncFeeds(ri *skynet.RequestInfo, in *skytypes.Inc, out *skytypes.NullType) (err error) {
-	return m.PublicationIncFeeds(in.Id, in.Delta)
-}
-
-// Main
-
-func main() {
-	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
-	log.SetPrefix(ServiceName + " ")
-
-	cc, _ := skynet.GetClientConfig()
-	c := client.NewClient(cc)
-
-	Stats = c.GetService("Stats", "", "", "")
-
-	sc, _ := skynet.GetServiceConfig()
-	sc.Name = ServiceName
-	sc.Region = "Storage"
-	sc.Version = "1"
-
-	s := service.CreateService(&Service{sc}, sc)
-	defer s.Shutdown()
-
-	s.Start(true).Wait()
+func (s *StorageWriter) PubIncFeeds(in *types.Inc, out *disgo.NullType) (err error) {
+	return s.m.PublicationIncFeeds(in.Id, in.Delta)
 }
