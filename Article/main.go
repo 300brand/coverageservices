@@ -1,57 +1,39 @@
-package main
+package Article
 
 import (
 	"git.300brand.com/coverage"
 	"git.300brand.com/coverage/article/body"
 	"git.300brand.com/coverage/article/lexer"
 	"git.300brand.com/coverage/downloader"
-	"git.300brand.com/coverageservices/skynetstats"
-	"git.300brand.com/coverageservices/skytypes"
-	"github.com/skynetservices/skynet"
-	"github.com/skynetservices/skynet/client"
-	"github.com/skynetservices/skynet/service"
-	"log"
+	"git.300brand.com/coverageservices/service"
+	"git.300brand.com/coverageservices/types"
+	"github.com/jbaikge/disgo"
+	"github.com/jbaikge/logger"
 	"strings"
 	"time"
 )
 
 type Service struct {
-	Config *skynet.ServiceConfig
+	client *disgo.Client
 }
 
-const ServiceName = "Article"
+var _ service.Service = new(Service)
 
-var (
-	_             service.ServiceDelegate = &Service{}
-	Stats         *client.ServiceClient
-	StorageReader *client.ServiceClient
-	StorageWriter *client.ServiceClient
-)
-
-// Funcs required for ServiceDelegate
-
-func (s *Service) MethodCalled(m string) {}
-
-func (s *Service) MethodCompleted(m string, d int64, err error) {
-	skynetstats.Completed(m, d, err)
+func init() {
+	service.Register("Article", new(Service))
 }
 
-func (s *Service) Registered(service *service.Service) {
-	skynetstats.Start(s.Config, Stats)
-}
+// Funcs required for Service
 
-func (s *Service) Started(service *service.Service) {}
-
-func (s *Service) Stopped(service *service.Service) {}
-
-func (s *Service) Unregistered(service *service.Service) {
-	skynetstats.Stop()
+func (s *Service) Start(client *disgo.Client) (err error) {
+	s.client = client
+	return
 }
 
 // Service funcs
 
-func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *skytypes.NullType) (err error) {
-	go func(ri *skynet.RequestInfo, a *coverage.Article) {
+func (s *Service) Process(in *coverage.Article, out *disgo.NullType) (err error) {
+	go func(a *coverage.Article) {
 		start := time.Now()
 		host := a.URL.Host
 		tld := host[strings.LastIndex(host[:strings.LastIndex(host, ".")], ".")+1:]
@@ -59,69 +41,45 @@ func (s *Service) Process(ri *skynet.RequestInfo, in *coverage.Article, out *sky
 
 		// Download article
 		if err := downloader.Article(a); err != nil {
-			skynetstats.Duration(time.Since(start), "Process.Download.Failure", domain)
-			log.Printf("%s[%s] Error downloading: %s", a.ID.Hex(), a.URL, err)
+			logger.Debug.Printf("%s %s.%s", time.Since(start), "Process.Download.Failure", domain)
+			logger.Error.Printf("%s[%s] Error downloading: %s", a.ID.Hex(), a.URL, err)
 			return
 		}
-		skynetstats.Duration(time.Since(start), "Process.Download.Success", domain)
-		skynetstats.Count(len(a.Text.HTML), "Process.Bandwidth", domain)
+		logger.Debug.Printf("%s %s.%s", time.Since(start), "Process.Download.Success", domain)
+		logger.Debug.Printf("%d %s.%s", len(a.Text.HTML), "Process.Bandwidth", domain)
 
 		// If any step fails along the way, save the article's state
 		defer func() {
-			if err := StorageWriter.SendOnce(ri, "Article", a, a); err != nil {
-				log.Printf("%s[%s] Error saving: %s", a.ID.Hex(), a.URL, err)
+			if err := s.client.Call("StorageWriter.Article", a, a); err != nil {
+				logger.Error.Printf("%s[%s] Error saving: %s", a.ID.Hex(), a.URL, err)
 				return
 			}
-			inc := skytypes.Inc{
+			inc := types.Inc{
 				Id:    a.PublicationId,
 				Delta: 1,
 			}
-			if err := StorageWriter.SendOnce(ri, "PubIncArticles", inc, skytypes.Null); err != nil {
-				log.Printf("%s[%s] Error incrementing article count for pub [%s]: %s", a.ID.Hex(), a.URL, a.PublicationId.Hex(), err)
+			if err := s.client.Call("StorageWriter.PubIncArticles", inc, disgo.Null); err != nil {
+				logger.Error.Printf("%s[%s] Error incrementing article count for pub [%s]: %s", a.ID.Hex(), a.URL, a.PublicationId.Hex(), err)
 			}
 		}()
 
 		// Extract body
 		start = time.Now()
 		if err := body.SetBody(a); err != nil || a.Text.Body.Text == nil || len(a.Text.Body.Text) == 0 {
-			skynetstats.Duration(time.Since(start), "Process.Body.Failure", domain)
-			log.Printf("%s[%s] Error setting body: %s", a.ID.Hex(), a.URL, err)
+			logger.Debug.Printf("%s %s.%s", time.Since(start), "Process.Body.Failure", domain)
+			logger.Error.Printf("%s[%s] Error setting body: %s", a.ID.Hex(), a.URL, err)
 			return
 		}
-		skynetstats.Duration(time.Since(start), "Process.Body.Success", domain)
-		skynetstats.Count(len(a.Text.Body.Text), "Process.BodyLength", domain)
+		logger.Debug.Printf("%s %s.%s", time.Since(start), "Process.Body.Success", domain)
+		logger.Debug.Printf("%d %s.%s", len(a.Text.Body.Text), "Process.BodyLength", domain)
 
 		// Filter out individual words
 		a.Text.Words.All = lexer.Words(a.Text.Body.Text)
-		skynetstats.Count(len(a.Text.Words.All), "Process.Words")
+		logger.Debug.Printf("%d %s", len(a.Text.Words.All), "Process.Words")
 
 		// Filter out Keywords
 		a.Text.Words.Keywords = lexer.Keywords(a.Text.Body.Text)
-		skynetstats.Count(len(a.Text.Words.Keywords), "Process.Keywords")
-	}(ri, in)
+		logger.Debug.Printf("%d %s", len(a.Text.Words.Keywords), "Process.Keywords")
+	}(in)
 	return
-}
-
-// Main
-
-func main() {
-	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
-	log.SetPrefix(ServiceName + " ")
-
-	cc, _ := skynet.GetClientConfig()
-	c := client.NewClient(cc)
-
-	Stats = c.GetService("Stats", "", "", "")
-	StorageReader = c.GetService("StorageReader", "", "", "")
-	StorageWriter = c.GetService("StorageWriter", "", "", "")
-
-	sc, _ := skynet.GetServiceConfig()
-	sc.Name = ServiceName
-	sc.Region = "Processing"
-	sc.Version = "1"
-
-	s := service.CreateService(&Service{sc}, sc)
-	defer s.Shutdown()
-
-	s.Start(true).Wait()
 }
