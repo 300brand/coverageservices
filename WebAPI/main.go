@@ -1,195 +1,139 @@
-package main
+package WebAPI
 
 import (
 	"git.300brand.com/coverage"
-	"git.300brand.com/coverage/config"
 	"git.300brand.com/coverage/social"
-	"git.300brand.com/coverageservices/skynetstats"
-	"git.300brand.com/coverageservices/skytypes"
+	"git.300brand.com/coverageservices/service"
+	"git.300brand.com/coverageservices/types"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/rpc"
 	"github.com/gorilla/rpc/json"
-	"github.com/skynetservices/skynet"
-	"github.com/skynetservices/skynet/client"
-	"github.com/skynetservices/skynet/service"
-	"log"
+	"github.com/jbaikge/disgo"
+	"github.com/jbaikge/go-toml-config"
+	"github.com/jbaikge/logger"
 	"net"
 	"net/http"
-	"net/url"
-	"os"
 	"time"
 )
 
 type Service struct {
-	Config *skynet.ServiceConfig
+	client *disgo.Client
 }
-type RPCArticle struct{}
-type RPCManager struct{}
-type RPCPublication struct{}
-type RPCSearch struct{}
-type RPCSocial struct{}
 
-const ServiceName = "WebAPI"
+type logWriter struct{}
+
+type RPCArticle struct{ s *Service }
+type RPCManager struct{ s *Service }
+type RPCPublication struct{ s *Service }
+type RPCSearch struct{ s *Service }
+type RPCSocial struct{ s *Service }
 
 var (
-	_             service.ServiceDelegate = &Service{}
-	Manager       *client.ServiceClient
-	Search        *client.ServiceClient
-	Social        *client.ServiceClient
-	Stats         *client.ServiceClient
-	StorageReader *client.ServiceClient
-	StorageWriter *client.ServiceClient
+	_ service.Service = new(Service)
+
+	cfgHttpListen = config.String("WebAPI.httplisten", ":8080")
 
 	jsonrpc  = rpc.NewServer()
-	cmdOnce  = &skytypes.ClockCommand{Command: "once"}
-	cmdStart = &skytypes.ClockCommand{Command: "start", Tick: time.Minute}
-	cmdStop  = &skytypes.ClockCommand{Command: "stop"}
+	cmdOnce  = &types.ClockCommand{Command: "once"}
+	cmdStart = &types.ClockCommand{Command: "start", Tick: time.Minute}
+	cmdStop  = &types.ClockCommand{Command: "stop"}
 )
 
 func init() {
+	service.Register("WebAPI", new(Service))
 	jsonrpc.RegisterCodec(json.NewCodec(), "application/json")
-	jsonrpc.RegisterService(new(RPCArticle), "Article")
-	jsonrpc.RegisterService(new(RPCManager), "Manager")
-	jsonrpc.RegisterService(new(RPCPublication), "Publication")
-	jsonrpc.RegisterService(new(RPCSearch), "Search")
-	jsonrpc.RegisterService(new(RPCSocial), "Social")
 }
 
-// Funcs required for ServiceDelegate
-
-func (s *Service) MethodCalled(m string) {}
-
-func (s *Service) MethodCompleted(m string, d int64, err error) {
-	skynetstats.Completed(m, d, err)
+// Logwriter functions
+func (l logWriter) Write(b []byte) (n int, err error) {
+	logger.Debug.Printf("WebAPI: %s", b)
+	return len(b), nil
 }
 
-func (s *Service) Registered(service *service.Service) {
-	skynetstats.Start(s.Config, Stats)
-}
+// Funcs required for Service
 
-func (s *Service) Started(service *service.Service) {}
+func (s *Service) Start(client *disgo.Client) (err error) {
+	s.client = client
 
-func (s *Service) Stopped(service *service.Service) {}
+	jsonrpc.RegisterService(&RPCArticle{s}, "Article")
+	jsonrpc.RegisterService(&RPCManager{s}, "Manager")
+	jsonrpc.RegisterService(&RPCPublication{s}, "Publication")
+	jsonrpc.RegisterService(&RPCSearch{s}, "Search")
+	jsonrpc.RegisterService(&RPCSocial{s}, "Social")
 
-func (s *Service) Unregistered(service *service.Service) {
-	skynetstats.Stop()
+	s.StartRPC()
+	return
 }
 
 // Service funcs
 
-func (m *RPCArticle) Get(r *http.Request, in *skytypes.ObjectId, out *coverage.Article) (err error) {
-	return StorageReader.Send(nil, "Article", in, out)
-}
-
-func (m *RPCManager) AddOneFeed(r *http.Request, in *skytypes.NullType, out *skytypes.NullType) (err error) {
-	return Manager.SendOnce(nil, "FeedAdder", cmdOnce, skytypes.Null)
-}
-
-func (m *RPCManager) StartQueue(r *http.Request, in *skytypes.NullType, out *skytypes.NullType) (err error) {
-	return Manager.SendOnce(nil, "FeedAdder", cmdStart, skytypes.Null)
-}
-
-func (m *RPCManager) StopQueue(r *http.Request, in *skytypes.NullType, out *skytypes.NullType) (err error) {
-	return Manager.SendOnce(nil, "FeedAdder", cmdStop, skytypes.Null)
-}
-
-func (m *RPCManager) ProcessNextFeed(r *http.Request, in *skytypes.NullType, out *skytypes.NullType) (err error) {
-	return Manager.SendOnce(nil, "FeedProcessor", cmdOnce, skytypes.Null)
-}
-
-func (m *RPCManager) StartFeeds(r *http.Request, in *skytypes.NullType, out *skytypes.NullType) (err error) {
-	return Manager.SendOnce(nil, "FeedProcessor", cmdStart, skytypes.Null)
-}
-
-func (m *RPCManager) StopFeeds(r *http.Request, in *skytypes.NullType, out *skytypes.NullType) (err error) {
-	return Manager.SendOnce(nil, "FeedProcessor", cmdStop, skytypes.Null)
-}
-
-func (m *RPCPublication) Add(r *http.Request, in *skytypes.Pub, out *coverage.Publication) (err error) {
-	p := coverage.NewPublication()
-	p.Title = in.Title
-	p.Readership = in.Readership
-	if p.URL, err = url.Parse(in.URL); err != nil {
+func (s *Service) StartRPC() (err error) {
+	listener, err := net.Listen("tcp", *cfgHttpListen)
+	if err != nil {
+		logger.Error.Fatal(err)
 		return
 	}
-	feeds := make([]*coverage.Feed, len(in.Feeds))
-	for i, feedUrl := range in.Feeds {
-		feeds[i] = coverage.NewFeed()
-		feeds[i].PublicationId = p.ID
-		if feeds[i].URL, err = url.Parse(feedUrl); err != nil {
-			return
-		}
-		p.NumFeeds++
-	}
-	if err = StorageWriter.SendOnce(nil, "Publication", p, skytypes.Null); err != nil {
-		return
-	}
-	for _, f := range feeds {
-		if err = StorageWriter.SendOnce(nil, "Feed", f, skytypes.Null); err != nil {
-			continue
-		}
-	}
-	*out = *p
+
+	go func(l net.Listener) {
+		defer l.Close()
+		logger.Debug.Printf("WebAPI: HTTP RPC Listening on %s", l.Addr())
+		http.Handle("/rpc", handlers.LoggingHandler(new(logWriter), jsonrpc))
+		logger.Error.Fatal(http.Serve(l, nil))
+	}(listener)
+
 	return
 }
 
-func (m *RPCPublication) Get(r *http.Request, in *skytypes.ObjectId, out *coverage.Publication) (err error) {
-	return StorageReader.Send(nil, "Publication", in, out)
+// RPC Funcs
+
+func (m *RPCArticle) Get(r *http.Request, in *types.ObjectId, out *coverage.Article) (err error) {
+	return m.s.client.Call("StorageReader.Article", in, out)
 }
 
-func (m *RPCPublication) GetAll(r *http.Request, in *skytypes.MultiQuery, out *skytypes.MultiPubs) (err error) {
-	return StorageReader.Send(nil, "Publications", in, out)
+func (m *RPCManager) AddOneFeed(r *http.Request, in *disgo.NullType, out *disgo.NullType) (err error) {
+	return m.s.client.Call("Manager.FeedAdder", cmdOnce, disgo.Null)
 }
 
-func (m *RPCSearch) Search(r *http.Request, in *skytypes.SearchQuery, out *skytypes.SearchQueryResponse) (err error) {
-	return Search.SendOnce(nil, "Search", in, out)
+func (m *RPCManager) StartQueue(r *http.Request, in *disgo.NullType, out *disgo.NullType) (err error) {
+	return m.s.client.Call("Manager.FeedAdder", cmdStart, disgo.Null)
 }
 
-func (m *RPCSocial) Article(r *http.Request, in *skytypes.ObjectId, out *social.Stats) (err error) {
+func (m *RPCManager) StopQueue(r *http.Request, in *disgo.NullType, out *disgo.NullType) (err error) {
+	return m.s.client.Call("Manager.FeedAdder", cmdStop, disgo.Null)
+}
+
+func (m *RPCManager) ProcessNextFeed(r *http.Request, in *disgo.NullType, out *disgo.NullType) (err error) {
+	return m.s.client.Call("Manager.FeedProcessor", cmdOnce, disgo.Null)
+}
+
+func (m *RPCManager) StartFeeds(r *http.Request, in *disgo.NullType, out *disgo.NullType) (err error) {
+	return m.s.client.Call("Manager.FeedProcessor", cmdStart, disgo.Null)
+}
+
+func (m *RPCManager) StopFeeds(r *http.Request, in *disgo.NullType, out *disgo.NullType) (err error) {
+	return m.s.client.Call("Manager.FeedProcessor", cmdStop, disgo.Null)
+}
+
+func (m *RPCPublication) Add(r *http.Request, in *types.Pub, out *coverage.Publication) (err error) {
+	return m.s.client.Call("Publication.Add", in, out)
+}
+
+func (m *RPCPublication) Get(r *http.Request, in *types.ObjectId, out *coverage.Publication) (err error) {
+	return m.s.client.Call("StorageReader.Publication", in, out)
+}
+
+func (m *RPCPublication) GetAll(r *http.Request, in *types.MultiQuery, out *types.MultiPubs) (err error) {
+	return m.s.client.Call("StorageReader.Publications", in, out)
+}
+
+func (m *RPCSearch) Search(r *http.Request, in *types.SearchQuery, out *types.SearchQueryResponse) (err error) {
+	return m.s.client.Call("Search.Search", in, out)
+}
+
+func (m *RPCSocial) Article(r *http.Request, in *types.ObjectId, out *social.Stats) (err error) {
 	a := new(coverage.Article)
-	if err = StorageReader.Send(nil, "Article", in, a); err != nil {
+	if err = m.s.client.Call("StorageReader.Article", in, a); err != nil {
 		return err
 	}
-	return Social.SendOnce(nil, "Article", a, out)
-}
-
-// Main
-
-func main() {
-	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
-	log.SetPrefix(ServiceName + " ")
-
-	// Skynet Client
-	cc, _ := skynet.GetClientConfig()
-	c := client.NewClient(cc)
-
-	Manager = c.GetService("Manager", "", "", "")
-	Search = c.GetService("Search", "", "", "")
-	Social = c.GetService("Social", "", "", "")
-	Stats = c.GetService("Stats", "", "", "")
-	StorageReader = c.GetService("StorageReader", "", "", "")
-	StorageWriter = c.GetService("StorageWriter", "", "", "")
-
-	// RPC
-	listener, err := net.Listen("tcp", config.RPCServer.Address)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer listener.Close()
-
-	go func(l net.Listener) {
-		log.Printf("Listening on %s", l.Addr())
-		http.Handle("/rpc", handlers.LoggingHandler(os.Stdout, jsonrpc))
-		log.Fatal(http.Serve(l, nil))
-	}(listener)
-
-	// Skynet Service
-	sc, _ := skynet.GetServiceConfig()
-	sc.Name = ServiceName
-	sc.Region = "Management"
-	sc.Version = "1"
-	s := service.CreateService(&Service{sc}, sc)
-	defer s.Shutdown()
-
-	s.Start(true).Wait()
+	return m.s.client.Call("Social.Article", a, out)
 }
