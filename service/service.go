@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/jbaikge/disgo"
-	"github.com/stvp/go-toml-config"
+	"github.com/jbaikge/go-toml-config"
 )
 
 type Service interface {
@@ -54,7 +54,7 @@ func Register(name string, service Service) {
 
 	// Set up flag
 	fe := new(enableDisable)
-	flag.Var(fe, name, "Valid values: \"enable\", \"disable\", or \"\" (uses value in config file)")
+	//flag.Var(fe, name, "Valid values: \"enable\", \"disable\", or \"\" (uses value in config file)")
 
 	// Add service
 	services[name] = serviceInfo{

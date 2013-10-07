@@ -7,7 +7,7 @@ import (
 	"git.300brand.com/coverageservices/types"
 	"github.com/jbaikge/disgo"
 	"github.com/jbaikge/logger"
-	"github.com/stvp/go-toml-config"
+	"github.com/jbaikge/go-toml-config"
 )
 
 type StorageReader struct {

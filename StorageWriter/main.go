@@ -6,8 +6,8 @@ import (
 	"git.300brand.com/coverageservices/service"
 	"git.300brand.com/coverageservices/types"
 	"github.com/jbaikge/disgo"
+	"github.com/jbaikge/go-toml-config"
 	"github.com/jbaikge/logger"
-	"github.com/stvp/go-toml-config"
 	"labix.org/v2/mgo/bson"
 	"time"
 )
