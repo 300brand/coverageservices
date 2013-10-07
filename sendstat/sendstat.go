@@ -1,9 +1,8 @@
-package skynetstats
+package sendstat
 
 import (
-	"git.300brand.com/coverageservices/skytypes"
-	"github.com/skynetservices/skynet"
-	"github.com/skynetservices/skynet/client"
+	"git.300brand.com/coverageservices/types"
+	"github.com/jbaikge/disgo"
 	"runtime"
 	"strings"
 	"time"
@@ -17,31 +16,32 @@ var (
 )
 
 func Completed(m string, d int64, err error) {
-	stat := skytypes.Stat{
+	stat := types.Stat{
 		Config:   sc,
 		Name:     m,
 		Duration: time.Duration(d),
 		Error:    err,
 	}
-	c.SendOnce(nil, "Completed", stat, skytypes.Null)
+	c.SendOnce(nil, "Completed", stat, disgo.Null)
 }
 
 func Count(count int, name ...string) {
-	stat := skytypes.Stat{
+	stat := types.Stat{
 		Config: sc,
 		Name:   strings.Join(name, "."),
 		Count:  count,
 	}
-	c.SendOnce(nil, "Increment", stat, skytypes.Null)
+	c.SendOnce(nil, "Increment", stat, disgo.Null)
 }
 
 func Duration(d time.Duration, name ...string) {
-	stat := skytypes.Stat{
+	_, file, line, ok := runtime.Caller(2)
+	stat := types.Stat{
 		Config:   sc,
 		Name:     strings.Join(name, "."),
 		Duration: d,
 	}
-	c.SendOnce(nil, "Duration", stat, skytypes.Null)
+	c.SendOnce(nil, "Duration", stat, disgo.Null)
 }
 
 func Start(serviceConfig *skynet.ServiceConfig, statsClient *client.ServiceClient) {
@@ -67,10 +67,10 @@ func Stop() {
 }
 
 func report(sc *skynet.ServiceConfig) {
-	stat := skytypes.Stat{
+	stat := types.Stat{
 		Config:     sc,
 		Goroutines: runtime.NumGoroutine(),
 	}
 	runtime.ReadMemStats(&stat.Mem)
-	c.SendOnce(nil, "Resources", stat, skytypes.Null)
+	c.SendOnce(nil, "Resources", stat, disgo.Null)
 }
