@@ -12,6 +12,7 @@ import (
 
 	_ "git.300brand.com/coverageservices/Article"
 	_ "git.300brand.com/coverageservices/Feed"
+	_ "git.300brand.com/coverageservices/Manager"
 	_ "git.300brand.com/coverageservices/Publication"
 	_ "git.300brand.com/coverageservices/Social"
 	_ "git.300brand.com/coverageservices/Stats"

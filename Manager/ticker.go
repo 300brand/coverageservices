@@ -1,8 +1,8 @@
-package main
+package Manager
 
 import (
 	"errors"
-	"git.300brand.com/coverageservices/skytypes"
+	"git.300brand.com/coverageservices/types"
 	"sync/atomic"
 	"time"
 )
@@ -26,7 +26,7 @@ func NewTicker(f func() error, d time.Duration) *Ticker {
 	}
 }
 
-func (t *Ticker) ProcessCommand(cmd *skytypes.ClockCommand) (err error) {
+func (t *Ticker) ProcessCommand(cmd *types.ClockCommand) (err error) {
 	switch cmd.Command {
 	case "once":
 		return t.F()

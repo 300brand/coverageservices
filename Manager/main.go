@@ -1,99 +1,65 @@
-package main
+package Manager
 
 import (
-	"git.300brand.com/coverageservices/skynetstats"
-	"git.300brand.com/coverageservices/skytypes"
-	"github.com/skynetservices/skynet"
-	"github.com/skynetservices/skynet/client"
-	"github.com/skynetservices/skynet/service"
-	"log"
+	"git.300brand.com/coverageservices/service"
+	"git.300brand.com/coverageservices/types"
+	"github.com/jbaikge/disgo"
+	"github.com/jbaikge/go-toml-config"
 	"time"
 )
 
 type Service struct {
-	Config *skynet.ServiceConfig
+	client *disgo.Client
 }
-
-const ServiceName = "Manager"
 
 var (
-	_          service.ServiceDelegate = &Service{}
+	_ service.Service = &Service{}
+
+	cfgStartup = config.Bool("Manager.startup", false)
+	cfgTick    = config.Duration("Manager.tick", 10*time.Second)
+
 	tAdder     *Ticker
 	tProcessor *Ticker
-	Queue      *client.ServiceClient
-	Stats      *client.ServiceClient
 )
 
-// Funcs required for ServiceDelegate
-
-func (s *Service) MethodCalled(m string) {}
-
-func (s *Service) MethodCompleted(m string, d int64, err error) {
-	skynetstats.Completed(m, d, err)
+func init() {
+	service.Register("Manager", new(Service))
 }
 
-func (s *Service) Registered(service *service.Service) {
-	skynetstats.Start(s.Config, Stats)
-}
+// Funcs required for Service
 
-func (s *Service) Started(service *service.Service) {
-	tAdder = NewTicker(s.addFeed, time.Second*10)
+func (s *Service) Start(client *disgo.Client) (err error) {
+	s.client = client
+
+	tAdder = NewTicker(s.addFeed, *cfgTick)
 	go tAdder.Run()
-	//tAdder.Start <- true
 
-	tProcessor = NewTicker(s.processFeed, time.Second*10)
+	tProcessor = NewTicker(s.processFeed, *cfgTick)
 	go tProcessor.Run()
-	//tProcessor.Start <- true
-}
 
-func (s *Service) Stopped(service *service.Service) {
-	tAdder.ProcessCommand(&skytypes.ClockCommand{Command: "stop"})
-	tProcessor.ProcessCommand(&skytypes.ClockCommand{Command: "stop"})
-}
-
-func (s *Service) Unregistered(service *service.Service) {
-	skynetstats.Stop()
+	if *cfgStartup {
+		tAdder.Start <- true
+		tProcessor.Start <- true
+	}
+	return
 }
 
 // Service funcs
 
-func (s *Service) FeedAdder(ri *skynet.RequestInfo, in *skytypes.ClockCommand, out *skytypes.ClockResult) (err error) {
+func (s *Service) FeedAdder(in *types.ClockCommand, out *types.ClockResult) (err error) {
 	return tAdder.ProcessCommand(in)
 }
 
 func (s *Service) addFeed() (err error) {
-	id := &skytypes.ObjectId{}
-	return Queue.SendOnce(nil, "AddFeed", skytypes.Null, id)
+	id := new(types.ObjectId)
+	return s.client.Call("Queue.AddFeed", disgo.Null, id)
 }
 
-func (s *Service) FeedProcessor(ri *skynet.RequestInfo, in *skytypes.ClockCommand, out *skytypes.NullType) (err error) {
+func (s *Service) FeedProcessor(in *types.ClockCommand, out *disgo.NullType) (err error) {
 	return tProcessor.ProcessCommand(in)
 }
 
 func (s *Service) processFeed() (err error) {
-	id := &skytypes.ObjectId{}
-	return Queue.SendOnce(nil, "ProcessFeed", skytypes.Null, id)
-}
-
-// Main
-
-func main() {
-	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
-	log.SetPrefix(ServiceName + " ")
-
-	cc, _ := skynet.GetClientConfig()
-	c := client.NewClient(cc)
-
-	Queue = c.GetService("Queue", "", "", "")
-	Stats = c.GetService("Stats", "", "", "")
-
-	sc, _ := skynet.GetServiceConfig()
-	sc.Name = ServiceName
-	sc.Region = "Management"
-	sc.Version = "1"
-
-	s := service.CreateService(&Service{sc}, sc)
-	defer s.Shutdown()
-
-	s.Start(true).Wait()
+	id := new(types.ObjectId)
+	return s.client.Call("Queue.ProcessFeed", disgo.Null, id)
 }
