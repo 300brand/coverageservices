@@ -16,6 +16,10 @@ type ClockResult struct {
 	Message string
 }
 
+type DateThreshold struct {
+	Threshold time.Time
+}
+
 type DateSearch struct {
 	Id    bson.ObjectId
 	Date  time.Time
