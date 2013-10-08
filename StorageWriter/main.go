@@ -96,6 +96,10 @@ func (s *StorageWriter) Feed(in *coverage.Feed, out *coverage.Feed) (err error) 
 	return
 }
 
+func (s *StorageWriter) NextDownloadFeedId(in *types.DateThreshold, out *types.ObjectId) (err error) {
+	return s.m.NextDownloadFeedId(in.Threshold, &out.Id)
+}
+
 func (s *StorageWriter) Publication(in *coverage.Publication, out *coverage.Publication) (err error) {
 	defer func() {
 		*out = *in
