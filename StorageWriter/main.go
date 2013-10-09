@@ -8,7 +8,6 @@ import (
 	"github.com/jbaikge/disgo"
 	"github.com/jbaikge/go-toml-config"
 	"github.com/jbaikge/logger"
-	"labix.org/v2/mgo/bson"
 	"time"
 )
 
@@ -56,7 +55,6 @@ func (s *StorageWriter) DateSearch(in *types.DateSearch, out *disgo.NullType) (e
 func (s *StorageWriter) NewSearch(in *coverage.Search, out *coverage.Search) (err error) {
 	*out = *in
 	out.Start = time.Now()
-	out.Id = bson.NewObjectId()
 	return s.m.UpdateSearch(out)
 }
 
