@@ -34,6 +34,7 @@ func (s *Service) Start(client *disgo.Client) (err error) {
 func (s *Service) Process(in *types.ObjectId, out *disgo.NullType) (err error) {
 	f := &coverage.Feed{}
 	if err = s.client.Call("StorageReader.Feed", in, f); err != nil {
+		logger.Error.Printf("Feed.Process: StorageReader.Feed error: %s", err)
 		return
 	}
 	defer s.client.Call("StorageWriter.Feed", f, f)
