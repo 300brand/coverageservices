@@ -1,4 +1,4 @@
-package main
+package Search
 
 import (
 	"bytes"
@@ -6,58 +6,43 @@ import (
 	"fmt"
 	"git.300brand.com/coverage"
 	"git.300brand.com/coverage/social"
-	"git.300brand.com/coverageservices/skynetstats"
-	"git.300brand.com/coverageservices/skytypes"
-	"github.com/skynetservices/skynet"
-	"github.com/skynetservices/skynet/client"
-	"github.com/skynetservices/skynet/service"
+	"git.300brand.com/coverageservices/service"
+	"git.300brand.com/coverageservices/types"
+	"github.com/jbaikge/disgo"
+	"github.com/jbaikge/go-toml-config"
+	"github.com/jbaikge/logger"
 	"labix.org/v2/mgo/bson"
-	"log"
 	"net/http"
 	"sync"
 	"time"
 )
 
 type Service struct {
-	Config *skynet.ServiceConfig
+	client *disgo.Client
 }
-
-const ServiceName = "Search"
 
 var (
-	_             service.ServiceDelegate = &Service{}
-	Search        *client.ServiceClient
-	Social        *client.ServiceClient
-	Stats         *client.ServiceClient
-	StorageReader *client.ServiceClient
-	StorageWriter *client.ServiceClient
+	_ service.Service = &Service{}
+
+	cfgSocialDelay = config.Duration("Search.socialdelay", time.Second)
 )
 
-// Funcs required for ServiceDelegate
-
-func (s *Service) MethodCalled(m string) {}
-
-func (s *Service) MethodCompleted(m string, d int64, err error) {
-	skynetstats.Completed(m, d, err)
+func init() {
+	service.Register("Search", new(Service))
 }
 
-func (s *Service) Registered(service *service.Service) {
-	skynetstats.Start(s.Config, Stats)
-}
+// Funcs required for Service
 
-func (s *Service) Started(service *service.Service) {}
-
-func (s *Service) Stopped(service *service.Service) {}
-
-func (s *Service) Unregistered(service *service.Service) {
-	skynetstats.Stop()
+func (s *Service) Start(client *disgo.Client) (err error) {
+	s.client = client
+	return
 }
 
 // Service funcs
 
-func (s *Service) NotifyComplete(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *skytypes.NullType) (err error) {
-	info := &coverage.Search{}
-	if err = StorageReader.Send(ri, "Search", in, info); err != nil {
+func (s *Service) NotifyComplete(in *types.ObjectId, out *disgo.NullType) (err error) {
+	info := new(coverage.Search)
+	if err = s.client.Call("StorageReader.Search", in, info); err != nil {
 		return
 	}
 
@@ -74,7 +59,7 @@ func (s *Service) NotifyComplete(ri *skynet.RequestInfo, in *skytypes.ObjectId, 
 	return
 }
 
-func (s *Service) Search(ri *skynet.RequestInfo, in *skytypes.SearchQuery, out *skytypes.SearchQueryResponse) (err error) {
+func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) (err error) {
 	// Validation
 	if in.Q == "" {
 		return fmt.Errorf("Query cannot be empty")
@@ -90,40 +75,41 @@ func (s *Service) Search(ri *skynet.RequestInfo, in *skytypes.SearchQuery, out *
 	}
 
 	cs := &coverage.Search{
+		Id:       bson.NewObjectId(),
 		Notify:   in.Notify,
 		Q:        in.Q,
 		Dates:    in.Dates,
 		DaysLeft: len(dates),
 	}
-	if err = StorageWriter.SendOnce(ri, "NewSearch", cs, cs); err != nil {
+	if err = s.client.Call("StorageWriter.NewSearch", cs, cs); err != nil {
 		return
 	}
 
-	ds := skytypes.DateSearch{
+	ds := types.DateSearch{
 		Id:    cs.Id,
 		Query: cs.Q,
 	}
 	var wg sync.WaitGroup
 	for _, ds.Date = range dates {
 		wg.Add(1)
-		go func(ds skytypes.DateSearch) {
-			StorageWriter.SendOnce(ri, "DateSearch", ds, skytypes.Null)
+		go func(ds types.DateSearch) {
+			s.client.Call("StorageWriter.DateSearch", ds, disgo.Null)
 			wg.Done()
 		}(ds)
 	}
 
 	// Wait for all of the DateSearch calls to finish, then send the
 	// notification of completeness
-	go func(ri skynet.RequestInfo, cs *coverage.Search) {
+	go func(cs *coverage.Search) {
 		wg.Wait()
-		if err := Search.SendOnce(&ri, "NotifyComplete", skytypes.ObjectId{cs.Id}, skytypes.Null); err != nil {
-			log.Print(err)
+		if err := s.client.Call("Search.NotifyComplete", types.ObjectId{cs.Id}, disgo.Null); err != nil {
+			logger.Error.Print(err)
 		}
-		if err := Search.SendOnce(&ri, "Social", skytypes.ObjectId{cs.Id}, skytypes.Null); err != nil {
-			log.Print(err)
+		if err := s.client.Call("Search.Social", types.ObjectId{cs.Id}, disgo.Null); err != nil {
+			logger.Error.Print(err)
 		}
-		skynetstats.Duration(time.Since(cs.Start), "Search.Completed")
-	}(*ri, cs)
+		logger.Info.Printf("Search completed in %s", time.Since(cs.Start))
+	}(cs)
 
 	// Prepare information for the caller
 	out.Id = cs.Id
@@ -132,9 +118,9 @@ func (s *Service) Search(ri *skynet.RequestInfo, in *skytypes.SearchQuery, out *
 	return
 }
 
-func (s *Service) Social(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *skytypes.NullType) (err error) {
+func (s *Service) Social(in *types.ObjectId, out *disgo.NullType) (err error) {
 	info := &coverage.Search{}
-	if err = StorageReader.Send(ri, "Search", in, info); err != nil {
+	if err = s.client.Call("StorageReader.Search", in, info); err != nil {
 		return
 	}
 
@@ -142,16 +128,16 @@ func (s *Service) Social(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *sky
 		for _, id := range info.Articles {
 			go func(id bson.ObjectId) {
 				// Get article from DB
-				log.Printf("Getting %s from DB", id.Hex())
+				logger.Debug.Printf("Getting %s from DB", id.Hex())
 				a := &coverage.Article{}
-				if err := StorageReader.Send(ri, "Article", skytypes.ObjectId{id}, a); err != nil {
-					log.Print(err)
+				if err := s.client.Call("StorageReader.Article", types.ObjectId{id}, a); err != nil {
+					logger.Error.Print(err)
 					return
 				}
 				// Get stats
-				log.Printf("Calling Social.Article for %s", id.Hex())
-				if err := Social.Send(ri, "Article", a, &a.Social); err != nil {
-					log.Print(err)
+				logger.Debug.Printf("Calling Social.Article for %s", id.Hex())
+				if err := s.client.Call("Social.Article", a, &a.Social); err != nil {
+					logger.Error.Print(err)
 					return
 				}
 				// Send stats to frontend
@@ -165,42 +151,14 @@ func (s *Service) Social(ri *skynet.RequestInfo, in *skytypes.ObjectId, out *sky
 				if err = enc.Encode(stats); err != nil {
 					return
 				}
-				log.Printf("Sending %+v to %s", stats, info.Notify.Social)
+				logger.Debug.Printf("Sending %+v to %s", stats, info.Notify.Social)
 				if _, err = http.Post(info.Notify.Social, "application/json", buf); err != nil {
 					return
 				}
 			}(id)
-			<-time.After(1 * time.Second)
+			<-time.After(*cfgSocialDelay)
 		}
 	}(*info)
 
 	return
-}
-
-// Main
-
-func main() {
-	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
-	log.SetPrefix(ServiceName + " ")
-
-	cc, _ := skynet.GetClientConfig()
-	c := client.NewClient(cc)
-
-	Search = c.GetService("Search", "", "", "")
-	Social = c.GetService("Social", "", "", "")
-	Stats = c.GetService("Stats", "", "", "")
-	StorageReader = c.GetService("StorageReader", "", "", "")
-	StorageWriter = c.GetService("StorageWriter", "", "", "")
-
-	Social.SetTimeout(30*time.Second, 60*time.Second)
-
-	sc, _ := skynet.GetServiceConfig()
-	sc.Name = ServiceName
-	sc.Region = "Search"
-	sc.Version = "1"
-
-	s := service.CreateService(&Service{sc}, sc)
-	defer s.Shutdown()
-
-	s.Start(true).Wait()
 }
