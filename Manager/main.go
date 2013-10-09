@@ -5,6 +5,7 @@ import (
 	"git.300brand.com/coverageservices/types"
 	"github.com/jbaikge/disgo"
 	"github.com/jbaikge/go-toml-config"
+	"github.com/jbaikge/logger"
 	"time"
 )
 
@@ -15,10 +16,10 @@ type Service struct {
 var (
 	_ service.Service = &Service{}
 
-	cfgStartup = config.Bool("Manager.startup", false)
-	cfgTick    = config.Duration("Manager.tick", 10*time.Second)
+	cfgStartup       = config.Bool("Manager.startup", false)
+	cfgTick          = config.Duration("Manager.tick", 10*time.Second)
+	cfgDownloadDelay = config.Duration("Manager.downloaddelay", -2*time.Hour)
 
-	tAdder     *Ticker
 	tProcessor *Ticker
 )
 
@@ -31,14 +32,10 @@ func init() {
 func (s *Service) Start(client *disgo.Client) (err error) {
 	s.client = client
 
-	tAdder = NewTicker(s.addFeed, *cfgTick)
-	go tAdder.Run()
-
 	tProcessor = NewTicker(s.processFeed, *cfgTick)
 	go tProcessor.Run()
 
 	if *cfgStartup {
-		tAdder.Start <- true
 		tProcessor.Start <- true
 	}
 	return
@@ -46,20 +43,18 @@ func (s *Service) Start(client *disgo.Client) (err error) {
 
 // Service funcs
 
-func (s *Service) FeedAdder(in *types.ClockCommand, out *types.ClockResult) (err error) {
-	return tAdder.ProcessCommand(in)
-}
-
-func (s *Service) addFeed() (err error) {
-	id := new(types.ObjectId)
-	return s.client.Call("Queue.AddFeed", disgo.Null, id)
-}
-
 func (s *Service) FeedProcessor(in *types.ClockCommand, out *disgo.NullType) (err error) {
 	return tProcessor.ProcessCommand(in)
 }
 
 func (s *Service) processFeed() (err error) {
 	id := new(types.ObjectId)
-	return s.client.Call("Queue.ProcessFeed", disgo.Null, id)
+	thresh := types.DateThreshold{time.Now().Add(*cfgDownloadDelay)}
+	logger.Debug.Printf("processFeed: Getting ID")
+	if err = s.client.Call("StorageWriter.NextDownloadFeedId", thresh, id); err != nil {
+		logger.Error.Printf("Manager.processFeed: %s", err)
+		return
+	}
+	logger.Debug.Printf("processFeed: Got %s", id.Id.Hex())
+	return s.client.Call("Feed.Process", id, disgo.Null)
 }
