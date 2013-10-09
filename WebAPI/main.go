@@ -90,18 +90,6 @@ func (m *RPCArticle) Get(r *http.Request, in *types.ObjectId, out *coverage.Arti
 	return m.s.client.Call("StorageReader.Article", in, out)
 }
 
-func (m *RPCManager) AddOneFeed(r *http.Request, in *disgo.NullType, out *disgo.NullType) (err error) {
-	return m.s.client.Call("Manager.FeedAdder", cmdOnce, disgo.Null)
-}
-
-func (m *RPCManager) StartQueue(r *http.Request, in *disgo.NullType, out *disgo.NullType) (err error) {
-	return m.s.client.Call("Manager.FeedAdder", cmdStart, disgo.Null)
-}
-
-func (m *RPCManager) StopQueue(r *http.Request, in *disgo.NullType, out *disgo.NullType) (err error) {
-	return m.s.client.Call("Manager.FeedAdder", cmdStop, disgo.Null)
-}
-
 func (m *RPCManager) ProcessNextFeed(r *http.Request, in *disgo.NullType, out *disgo.NullType) (err error) {
 	return m.s.client.Call("Manager.FeedProcessor", cmdOnce, disgo.Null)
 }
