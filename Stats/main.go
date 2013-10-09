@@ -34,10 +34,10 @@ func init() {
 
 func (s *Stats) Start(client *disgo.Client) (err error) {
 	s.client = client
-	return
+
 	go func(addr string) {
 		for {
-			logger.Debug.Printf("Connecting to %s", addr)
+			logger.Trace.Printf("Connecting to %s", addr)
 			newConn, err := statsd.Dial(addr)
 			if err != nil {
 				logger.Error.Printf("Could not connect to Statsd Server: %s", err)
