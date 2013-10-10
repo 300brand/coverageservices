@@ -39,6 +39,11 @@ func main() {
 		logger.Error.Fatal(err)
 	}
 
+	if err := applyLogSettings(); err != nil {
+		fmt.Printf("Error with logging settings: %s\n", err)
+		os.Exit(1)
+	}
+
 	// Show values
 	if *showConfig {
 		fmt.Printf("%-32s%-32s%s\n\n", "Directive", "Value", "Default")
