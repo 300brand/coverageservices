@@ -8,6 +8,8 @@ import (
 	"net/url"
 )
 
+type PubsArr []types.Pub
+
 type Service struct {
 	client *disgo.Client
 }
@@ -52,5 +54,15 @@ func (s *Service) Add(in *types.Pub, out *coverage.Publication) (err error) {
 		}
 	}
 	*out = *p
+	return
+}
+
+func (s *Service) AddAll(in *PubsArr, out *disgo.NullType) (err error) {
+	p := new(coverage.Publication)
+	for _, pub := range []types.Pub(*in) {
+		if err = s.Add(&pub, p); err != nil {
+			return
+		}
+	}
 	return
 }
