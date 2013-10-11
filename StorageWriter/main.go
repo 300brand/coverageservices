@@ -59,28 +59,27 @@ func (s *StorageWriter) NewSearch(in *coverage.Search, out *coverage.Search) (er
 }
 
 func (s *StorageWriter) Article(in *coverage.Article, out *coverage.Article) (err error) {
+	start := time.Now()
+
 	defer func() {
 		*out = *in
+		s.client.Call("Stats.Duration", types.Stat{
+			Name:     "StorageWriter.Article.AddKeywords",
+			Duration: time.Since(start),
+		}, disgo.Null)
+		logger.Info.Printf("Added [P:%s] [F:%s] [A:%s] %s", in.PublicationId.Hex(), in.FeedId.Hex(), in.ID.Hex(), in.URL)
 	}()
 
 	if err = s.m.AddURL(in.URL, in.ID); err != nil {
-		logger.Warn.Printf("Duplicate URL: %s", in.URL)
+		logger.Warn.Printf("StorageWriter.Article: [P:%s] [F:%s] [A:%s] Duplicate URL: %s", in.PublicationId.Hex(), in.FeedId.Hex(), in.ID.Hex(), in.URL)
 		return
 	}
 	if err = s.m.UpdateArticle(in); err != nil {
 		return
 	}
-	go func(a *coverage.Article) {
-		start := time.Now()
-		if err := s.m.AddKeywords(in); err != nil {
-			logger.Error.Printf("Error saving keywords: %s", err)
-		}
-		s.client.Call("Stats.Duration", types.Stat{
-			Name:     "StorageWriter.Article.AddKeywords",
-			Duration: time.Since(start),
-		}, disgo.Null)
-		logger.Info.Printf("Added [%s] %s", a.ID.Hex(), a.URL)
-	}(in)
+	if err := s.m.AddKeywords(in); err != nil {
+		logger.Error.Printf("StorageWriter.Article: [P:%s] [F:%s] [A:%s] Error saving keywords: %s", in.PublicationId.Hex(), in.FeedId.Hex(), in.ID.Hex(), err)
+	}
 	return
 }
 
