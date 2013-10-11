@@ -64,7 +64,7 @@ func (s *StorageWriter) Article(in *coverage.Article, out *coverage.Article) (er
 	}()
 
 	if err = s.m.AddURL(in.URL, in.ID); err != nil {
-		logger.Info.Printf("Duplicate URL: %s", in.URL)
+		logger.Warn.Printf("Duplicate URL: %s", in.URL)
 		return
 	}
 	if err = s.m.UpdateArticle(in); err != nil {
@@ -79,6 +79,7 @@ func (s *StorageWriter) Article(in *coverage.Article, out *coverage.Article) (er
 			Name:     "StorageWriter.Article.AddKeywords",
 			Duration: time.Since(start),
 		}, disgo.Null)
+		logger.Info.Printf("Added [%s] %s", a.ID.Hex(), a.URL)
 	}(in)
 	return
 }
