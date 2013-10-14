@@ -88,6 +88,7 @@ func (s *StorageWriter) Feed(in *coverage.Feed, out *coverage.Feed) (err error) 
 		*out = *in
 	}()
 
+	logger.Debug.Printf("StorageWriter.Feed: [P:%s] [F:%s] %s", in.PublicationId.Hex(), in.ID.Hex(), in.LastDownload)
 	if err = s.m.UpdateFeed(in); err != nil {
 		return
 	}
