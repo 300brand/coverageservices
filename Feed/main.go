@@ -1,11 +1,11 @@
 package Feed
 
 import (
-	"git.300brand.com/coverage"
-	"git.300brand.com/coverage/downloader"
-	"git.300brand.com/coverage/feed"
-	"git.300brand.com/coverageservices/service"
-	"git.300brand.com/coverageservices/types"
+	"github.com/300brand/coverage"
+	"github.com/300brand/coverage/downloader"
+	"github.com/300brand/coverage/feed"
+	"github.com/300brand/coverageservices/service"
+	"github.com/300brand/coverageservices/types"
 	"github.com/jbaikge/disgo"
 	"github.com/jbaikge/logger"
 	"math/rand"

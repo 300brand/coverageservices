@@ -1,9 +1,9 @@
 package Publication
 
 import (
-	"git.300brand.com/coverage"
-	"git.300brand.com/coverageservices/service"
-	"git.300brand.com/coverageservices/types"
+	"github.com/300brand/coverage"
+	"github.com/300brand/coverageservices/service"
+	"github.com/300brand/coverageservices/types"
 	"github.com/jbaikge/disgo"
 	"net/url"
 )

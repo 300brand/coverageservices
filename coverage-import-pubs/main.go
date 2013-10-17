@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	jsonenc "encoding/json"
 	"flag"
-	"git.300brand.com/coverageservices/skytypes"
+	"github.com/300brand/coverageservices/skytypes"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/rpc/json"
 	"log"

@@ -1,9 +1,9 @@
 package Social
 
 import (
-	"git.300brand.com/coverage"
-	"git.300brand.com/coverage/social"
-	"git.300brand.com/coverageservices/service"
+	"github.com/300brand/coverage"
+	"github.com/300brand/coverage/social"
+	"github.com/300brand/coverageservices/service"
 	"github.com/jbaikge/disgo"
 )
 

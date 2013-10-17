@@ -1,8 +1,8 @@
 package Manager
 
 import (
-	"git.300brand.com/coverageservices/service"
-	"git.300brand.com/coverageservices/types"
+	"github.com/300brand/coverageservices/service"
+	"github.com/300brand/coverageservices/types"
 	"github.com/jbaikge/disgo"
 	"github.com/jbaikge/go-toml-config"
 	"github.com/jbaikge/logger"

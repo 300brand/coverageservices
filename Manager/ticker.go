@@ -2,7 +2,7 @@ package Manager
 
 import (
 	"errors"
-	"git.300brand.com/coverageservices/types"
+	"github.com/300brand/coverageservices/types"
 	"sync/atomic"
 	"time"
 )
