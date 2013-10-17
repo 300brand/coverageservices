@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/jbaikge/disgo"
-	"github.com/jbaikge/go-toml-config"
+	"github.com/300brand/disgo"
+	"github.com/300brand/go-toml-config"
 )
 
 type Service interface {

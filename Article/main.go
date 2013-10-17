@@ -7,8 +7,8 @@ import (
 	"github.com/300brand/coverage/downloader"
 	"github.com/300brand/coverageservices/service"
 	"github.com/300brand/coverageservices/types"
-	"github.com/jbaikge/disgo"
-	"github.com/jbaikge/logger"
+	"github.com/300brand/disgo"
+	"github.com/300brand/logger"
 	"strings"
 	"time"
 )

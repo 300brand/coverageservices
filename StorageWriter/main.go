@@ -5,9 +5,9 @@ import (
 	"github.com/300brand/coverage/storage/mongo"
 	"github.com/300brand/coverageservices/service"
 	"github.com/300brand/coverageservices/types"
-	"github.com/jbaikge/disgo"
-	"github.com/jbaikge/go-toml-config"
-	"github.com/jbaikge/logger"
+	"github.com/300brand/disgo"
+	"github.com/300brand/go-toml-config"
+	"github.com/300brand/logger"
 	"time"
 )
 

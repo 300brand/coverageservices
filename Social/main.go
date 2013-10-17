@@ -4,7 +4,7 @@ import (
 	"github.com/300brand/coverage"
 	"github.com/300brand/coverage/social"
 	"github.com/300brand/coverageservices/service"
-	"github.com/jbaikge/disgo"
+	"github.com/300brand/disgo"
 )
 
 type Service struct{}

@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"github.com/300brand/coverageservices/service"
-	"github.com/jbaikge/disgo"
-	"github.com/jbaikge/go-toml-config"
-	"github.com/jbaikge/logger"
+	"github.com/300brand/disgo"
+	"github.com/300brand/go-toml-config"
+	"github.com/300brand/logger"
 	"os"
 	"strings"
 

@@ -2,7 +2,7 @@ package sendstat
 
 import (
 	"github.com/300brand/coverageservices/types"
-	"github.com/jbaikge/disgo"
+	"github.com/300brand/disgo"
 	"runtime"
 	"strings"
 	"time"

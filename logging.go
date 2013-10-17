@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/jbaikge/go-toml-config"
-	"github.com/jbaikge/logger"
+	"github.com/300brand/go-toml-config"
+	"github.com/300brand/logger"
 	"io"
 	"io/ioutil"
 	"log"
