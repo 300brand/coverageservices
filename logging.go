@@ -119,7 +119,7 @@ func applyLogSettings() (err error) {
 		var w io.Writer
 		switch len(outs) {
 		case 0:
-			// noop
+			w = ioutil.Discard
 		case 1:
 			w = outs[0]
 		default:
