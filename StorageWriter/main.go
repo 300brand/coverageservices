@@ -77,11 +77,11 @@ func (s *StorageWriter) Article(in *coverage.Article, out *coverage.Article) (er
 	if err = s.m.UpdateArticle(in); err != nil {
 		return
 	}
-	if err := s.m.AddKeywords(in); err != nil {
+	if err = s.m.AddKeywords(in); err != nil {
 		logger.Error.Printf("StorageWriter.Article: [P:%s] [F:%s] [A:%s] Error saving keywords: %s", in.PublicationId.Hex(), in.FeedId.Hex(), in.ID.Hex(), err)
 		return
 	}
-	if err := s.m.PublicationIncArticles(in.PublicationId, 1); err != nil {
+	if err = s.m.PublicationIncArticles(in.PublicationId, 1); err != nil {
 		logger.Error.Printf("StorageWriter.Article: [P:%s] [F:%s] [A:%s] Error incrementing pub article count: %s", in.PublicationId.Hex(), in.FeedId.Hex(), in.ID.Hex(), err)
 		return
 	}
