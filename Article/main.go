@@ -53,15 +53,7 @@ func (s *Service) Process(in *coverage.Article, out *disgo.NullType) (err error)
 	// If any step fails along the way, save the article's state
 	defer func() {
 		if err = s.client.Call("StorageWriter.Article", in, in); err != nil {
-			logger.Error.Printf("%s[%s] Error saving: %s", in.ID.Hex(), in.URL, err)
-			return
-		}
-		inc := types.Inc{
-			Id:    in.PublicationId,
-			Delta: 1,
-		}
-		if err = s.client.Call("StorageWriter.PubIncArticles", inc, disgo.Null); err != nil {
-			logger.Error.Printf("%s[%s] Error incrementing article count for pub [%s]: %s", in.ID.Hex(), in.URL, in.PublicationId.Hex(), err)
+			logger.Error.Printf("Article.Process: [P:%s] [F:%s] [A:%s] [U:%s] Error saving: %s", in.PublicationId.Hex(), in.FeedId.Hex(), in.ID.Hex(), in.URL, err)
 		}
 	}()
 
