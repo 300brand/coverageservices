@@ -49,7 +49,7 @@ func (s *Service) Process(in *coverage.Article, out *disgo.NullType) (err error)
 	}
 	if l := len(in.Text.HTML); int64(l) == downloader.MaxFileSize {
 		logger.Error.Printf("%s Download failure: Document larger than max file size (%d)", prefix, l)
-		return
+		return fmt.Errorf("Document larger than max file size. URL: %s", in.URL)
 	}
 	logger.Debug.Printf("%s Download success. %d bytes took %s", prefix, len(in.Text.HTML), time.Since(start))
 
