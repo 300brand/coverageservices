@@ -73,6 +73,6 @@ func (s *Service) Process(in *coverage.Article, out *disgo.NullType) (err error)
 	// Filter out Keywords
 	in.Text.Words.Keywords = lexer.Keywords(in.Text.Body.Text)
 
-	logger.Debug.Printf("%s Body Length: %d; Words: %d; Keywords: %d; Took: %s", len(in.Text.Body.Text), len(in.Text.Words.All), len(in.Text.Words.Keywords), time.Since(start))
+	logger.Debug.Printf("%s Body Length: %d; Words: %d; Keywords: %d; Took: %s", prefix, len(in.Text.Body.Text), len(in.Text.Words.All), len(in.Text.Words.Keywords), time.Since(start))
 	return
 }
