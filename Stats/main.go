@@ -60,8 +60,6 @@ func (s *Stats) Start(client *disgo.Client) (err error) {
 // Service funcs
 
 func (s *Stats) Completed(stat *types.Stat, out *disgo.NullType) (err error) {
-	return // temporarily disabled
-
 	base := statBase(stat)
 	s.stats.Increment(statJoin(base, "Calls"), 1, *cfgRate)
 	if stat.Error != nil {
@@ -72,26 +70,18 @@ func (s *Stats) Completed(stat *types.Stat, out *disgo.NullType) (err error) {
 }
 
 func (s *Stats) Decrement(stat *types.Stat, out *disgo.NullType) (err error) {
-	return // temporarily disabled
-
 	return s.stats.Decrement(statBase(stat), stat.Count, *cfgRate)
 }
 
 func (s *Stats) Gauge(stat *types.Stat, out *disgo.NullType) (err error) {
-	return // temporarily disabled
-
 	return s.stats.Gauge(statBase(stat), stat.Count, *cfgRate)
 }
 
 func (s *Stats) Increment(stat *types.Stat, out *disgo.NullType) (err error) {
-	return // temporarily disabled
-
 	return s.stats.Increment(statBase(stat), stat.Count, *cfgRate)
 }
 
 func (s *Stats) Resources(stat *types.Stat, out *disgo.NullType) (err error) {
-	return // temporarily disabled
-
 	base := statBase(stat)
 	attr := map[string]int{
 		"Alloc":      int(stat.Mem.Alloc),
@@ -113,8 +103,6 @@ func (s *Stats) Resources(stat *types.Stat, out *disgo.NullType) (err error) {
 }
 
 func (s *Stats) Duration(stat *types.Stat, out *disgo.NullType) (err error) {
-	return // temporarily disabled
-
 	return s.stats.Duration(statBase(stat), stat.Duration, *cfgRate)
 }
 
