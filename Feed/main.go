@@ -9,10 +9,12 @@ import (
 	"github.com/300brand/disgo"
 	"github.com/300brand/logger"
 	"math/rand"
+	"sync/atomic"
 	"time"
 )
 
 type Service struct {
+	Active int32
 	client *disgo.Client
 }
 
@@ -32,35 +34,43 @@ func (s *Service) Start(client *disgo.Client) (err error) {
 // Service funcs
 
 func (s *Service) Process(in *types.ObjectId, out *disgo.NullType) (err error) {
+	start := time.Now()
+
+	atomic.AddInt32(&s.Active, 1)
+	s.client.Call("Stats.Gauge", &types.Stat{Name: "Feed.Process.Active", Count: int(s.Active)}, disgo.Null)
+
+	defer func() {
+		atomic.AddInt32(&s.Active, -1)
+		s.client.Call("Stats.Gauge", &types.Stat{Name: "Feed.Process.Active", Count: int(s.Active)}, disgo.Null)
+	}()
+
 	f := &coverage.Feed{}
 	if err = s.client.Call("StorageReader.Feed", in, f); err != nil {
+		s.client.Call("Stats.Increment", &types.Stat{Name: "Feed.Process.Errors.Database", Count: 1}, disgo.Null)
 		logger.Error.Printf("Feed.Process: StorageReader.Feed error: %s", err)
 		return
 	}
 	defer s.client.Call("StorageWriter.Feed", f, f)
 
-	// start := time.Now()
 	if err = downloader.Feed(f); err != nil {
-		// skynetstats.Duration(time.Since(start), "Process.Download.Failure")
+		s.client.Call("Stats.Increment", &types.Stat{Name: "Feed.Process.Errors.Download", Count: 1}, disgo.Null)
 		logger.Error.Printf("%s[%s] Error downloading: %s", f.ID.Hex(), f.URL, err)
 		return
 	}
-	// skynetstats.Duration(time.Since(start), "Process.Download.Success")
-	// skynetstats.Count(len(f.Content), "Process.Bandwidth")
+	s.client.Call("Stats.Increment", &types.Stat{Name: "Feed.Process.FeedSize", Count: len(f.Content)}, disgo.Null)
 
-	// start = time.Now()
 	if err = feed.Process(f); err != nil {
-		// skynetstats.Duration(time.Since(start), "Process.Process.Failure")
+		s.client.Call("Stats.Increment", &types.Stat{Name: "Feed.Process.Errors.Process", Count: 1}, disgo.Null)
 		logger.Error.Printf("%s[%s] Error parsing: %s", f.ID.Hex(), f.URL, err)
 		return
 	}
-	// skynetstats.Duration(time.Since(start), "Process.Process.Success")
-	// skynetstats.Count(len(f.Articles), "Process.NewArticles")
 
+	s.client.Call("Stats.Increment", &types.Stat{Name: "Feed.Process.NewArticles", Count: len(f.Articles)}, disgo.Null)
 	for _, a := range f.Articles {
 		// Add a 5-15 second delay between article downloads
 		<-time.After(time.Duration(rand.Int63n(10)+5) * time.Second)
 		s.client.Call("Article.Process", a, disgo.Null)
 	}
+	s.client.Call("Stats.Duration", &types.Stat{Name: "Feed.Process", Duration: time.Since(start)}, disgo.Null)
 	return
 }
