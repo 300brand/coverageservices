@@ -1,6 +1,7 @@
 package StorageWriter
 
 import (
+	"fmt"
 	"github.com/300brand/coverage"
 	"github.com/300brand/coverage/storage/mongo"
 	"github.com/300brand/coverageservices/service"
@@ -60,31 +61,30 @@ func (s *StorageWriter) NewSearch(in *coverage.Search, out *coverage.Search) (er
 
 func (s *StorageWriter) Article(in *coverage.Article, out *coverage.Article) (err error) {
 	start := time.Now()
+	prefix := fmt.Sprintf("StorageWriter.Article: [P:%s] [F:%s] [A:%s] [U:%s]", in.PublicationId.Hex(), in.FeedId.Hex(), in.ID.Hex(), in.URL)
 
 	defer func() {
 		*out = *in
-		s.client.Call("Stats.Duration", types.Stat{
-			Name:     "StorageWriter.Article.AddKeywords",
-			Duration: time.Since(start),
-		}, disgo.Null)
-		logger.Info.Printf("Added [P:%s] [F:%s] [A:%s] %s", in.PublicationId.Hex(), in.FeedId.Hex(), in.ID.Hex(), in.URL)
 	}()
 
 	if err = s.m.AddURL(in.URL, in.ID); err != nil {
-		logger.Warn.Printf("StorageWriter.Article: [P:%s] [F:%s] [A:%s] Duplicate URL: %s", in.PublicationId.Hex(), in.FeedId.Hex(), in.ID.Hex(), in.URL)
+		logger.Warn.Printf("%s Duplicate URL", prefix)
 		return
 	}
 	if err = s.m.UpdateArticle(in); err != nil {
+		logger.Error.Printf("%s Error saving article: %s", prefix, err)
 		return
 	}
+	defer logger.Info.Printf("%s Added", prefix)
 	if err = s.m.PublicationIncArticles(in.PublicationId, 1); err != nil {
-		logger.Error.Printf("StorageWriter.Article: [P:%s] [F:%s] [A:%s] Error incrementing pub article count: %s", in.PublicationId.Hex(), in.FeedId.Hex(), in.ID.Hex(), err)
+		logger.Error.Printf("%s Error incrementing pub article count: %s", prefix, err)
 		return
 	}
 	if err = s.m.AddKeywords(in); err != nil {
-		logger.Error.Printf("StorageWriter.Article: [P:%s] [F:%s] [A:%s] Error saving keywords: %s", in.PublicationId.Hex(), in.FeedId.Hex(), in.ID.Hex(), err)
+		logger.Error.Printf("%s Error saving keywords: %s", prefix, err)
 		return
 	}
+	s.client.Call("Stats.Duration", types.Stat{Name: "StorageWriter.Article", Duration: time.Since(start)}, disgo.Null)
 	return
 }
 
