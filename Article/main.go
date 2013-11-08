@@ -48,6 +48,7 @@ func (s *Service) Process(in *coverage.Article, out *disgo.NullType) (err error)
 		logger.Error.Printf("%s Download failure: %s", prefix, err)
 		return
 	}
+	s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Process.HTML.Size", Count: len(in.Text.HTML)}, disgo.Null)
 	logger.Debug.Printf("%s Download success. %d bytes took %s", prefix, len(in.Text.HTML), time.Since(start))
 
 	// If any step fails along the way, save the article's state
