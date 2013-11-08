@@ -36,7 +36,6 @@ func (s *Service) Start(client *disgo.Client) (err error) {
 
 func (s *Service) Process(in *types.ObjectId, out *disgo.NullType) (err error) {
 	start := time.Now()
-	prefix := fmt.Sprintf("Feed.Process: [P:%s] [F:%s] [U:%s]", in.PublicationId.Hex(), in.ID.Hex(), in.URL)
 
 	atomic.AddInt32(&s.Active, 1)
 	s.client.Call("Stats.Gauge", &types.Stat{Name: "Feed.Process.Active", Count: int(s.Active)}, disgo.Null)
@@ -49,10 +48,12 @@ func (s *Service) Process(in *types.ObjectId, out *disgo.NullType) (err error) {
 	f := &coverage.Feed{}
 	if err = s.client.Call("StorageReader.Feed", in, f); err != nil {
 		s.client.Call("Stats.Increment", &types.Stat{Name: "Feed.Process.Errors.Database", Count: 1}, disgo.Null)
-		logger.Error.Printf("%s Error saving: %s", prefix, err)
+		logger.Error.Printf("[F:%s] Error fetching: %s", in.Id, err)
 		return
 	}
 	defer s.client.Call("StorageWriter.Feed", f, f)
+
+	prefix := fmt.Sprintf("Feed.Process: [P:%s] [F:%s] [U:%s]", f.PublicationId.Hex(), f.ID.Hex(), f.URL)
 
 	if err = downloader.Feed(f); err != nil {
 		s.client.Call("Stats.Increment", &types.Stat{Name: "Feed.Process.Errors.Download", Count: 1}, disgo.Null)
