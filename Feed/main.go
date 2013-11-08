@@ -1,6 +1,7 @@
 package Feed
 
 import (
+	"fmt"
 	"github.com/300brand/coverage"
 	"github.com/300brand/coverage/downloader"
 	"github.com/300brand/coverage/feed"
@@ -35,6 +36,7 @@ func (s *Service) Start(client *disgo.Client) (err error) {
 
 func (s *Service) Process(in *types.ObjectId, out *disgo.NullType) (err error) {
 	start := time.Now()
+	prefix := fmt.Sprintf("Feed.Process: [P:%s] [F:%s] [U:%s]", in.PublicationId.Hex(), in.ID.Hex(), in.URL)
 
 	atomic.AddInt32(&s.Active, 1)
 	s.client.Call("Stats.Gauge", &types.Stat{Name: "Feed.Process.Active", Count: int(s.Active)}, disgo.Null)
@@ -47,21 +49,21 @@ func (s *Service) Process(in *types.ObjectId, out *disgo.NullType) (err error) {
 	f := &coverage.Feed{}
 	if err = s.client.Call("StorageReader.Feed", in, f); err != nil {
 		s.client.Call("Stats.Increment", &types.Stat{Name: "Feed.Process.Errors.Database", Count: 1}, disgo.Null)
-		logger.Error.Printf("Feed.Process: StorageReader.Feed error: %s", err)
+		logger.Error.Printf("%s Error saving: %s", prefix, err)
 		return
 	}
 	defer s.client.Call("StorageWriter.Feed", f, f)
 
 	if err = downloader.Feed(f); err != nil {
 		s.client.Call("Stats.Increment", &types.Stat{Name: "Feed.Process.Errors.Download", Count: 1}, disgo.Null)
-		logger.Error.Printf("%s[%s] Error downloading: %s", f.ID.Hex(), f.URL, err)
+		logger.Error.Printf("%s Error downloading: %s", prefix, err)
 		return
 	}
 	s.client.Call("Stats.Increment", &types.Stat{Name: "Feed.Process.FeedSize", Count: len(f.Content)}, disgo.Null)
 
 	if err = feed.Process(f); err != nil {
 		s.client.Call("Stats.Increment", &types.Stat{Name: "Feed.Process.Errors.Process", Count: 1}, disgo.Null)
-		logger.Error.Printf("%s[%s] Error parsing: %s", f.ID.Hex(), f.URL, err)
+		logger.Error.Printf("%s Error parsing: %s", prefix, err)
 		return
 	}
 
