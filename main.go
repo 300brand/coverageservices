@@ -7,6 +7,7 @@ import (
 	"github.com/300brand/disgo"
 	"github.com/300brand/go-toml-config"
 	"github.com/300brand/logger"
+	"net/http"
 	"os"
 	"strings"
 
@@ -20,12 +21,14 @@ import (
 	_ "github.com/300brand/coverageservices/StorageReader"
 	_ "github.com/300brand/coverageservices/StorageWriter"
 	_ "github.com/300brand/coverageservices/WebAPI"
+	_ "net/http/pprof"
 )
 
 var (
 	configFile     = flag.String("config", "config.toml", "Config file location")
 	showConfig     = flag.Bool("showconfig", false, "Show configuration and exit")
 	gearmanServers = config.String("gearman.servers", ":4730")
+	pprofListen    = config.String("pprof.listen", ":6060")
 )
 
 func main() {
@@ -52,6 +55,11 @@ func main() {
 		})
 		return
 	}
+
+	// Make pprof available
+	go func() {
+		logger.Error.Println(http.ListenAndServe(*pprofListen, nil))
+	}()
 
 	// Prepare for Gearman
 	addrs := strings.Split(*gearmanServers, ",")
