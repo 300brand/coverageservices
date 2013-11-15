@@ -68,5 +68,15 @@ func (s *Service) AddAll(in *PubsArr, out *disgo.NullType) (err error) {
 }
 
 func (s *Service) View(in *types.ViewPubQuery, out *types.ViewPub) (err error) {
+	pubId := &types.ObjectId{Id: in.Publication}
+	if err = s.client.Call("StorageReader.Publication", pubId, out.Publication); err != nil {
+		return
+	}
+	if err = s.client.Call("StorageReader.Feeds", in.Feeds, &out.Feeds); err != nil {
+		return
+	}
+	if err = s.client.Call("StorageReader.Articles", in.Articles, &out.Articles); err != nil {
+		return
+	}
 	return
 }
