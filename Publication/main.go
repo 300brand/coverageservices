@@ -66,3 +66,7 @@ func (s *Service) AddAll(in *PubsArr, out *disgo.NullType) (err error) {
 	}
 	return
 }
+
+func (s *Service) View(in *types.ViewPubQuery, out *types.ViewPub) (err error) {
+	return
+}
