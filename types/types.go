@@ -40,10 +40,11 @@ type ObjectId struct {
 }
 
 type MultiQuery struct {
-	Query interface{}
-	Sort  string
-	Skip  int
-	Limit int
+	Query  interface{}
+	Select map[string]int
+	Sort   string
+	Skip   int
+	Limit  int
 }
 
 type MultiPubs struct {
@@ -93,4 +94,16 @@ type Stat struct {
 	Error      error
 	Goroutines int
 	Mem        runtime.MemStats
+}
+
+type ViewPub struct {
+	Publication *coverage.Publication
+	Feeds       []*coverage.Feed
+	Articles    []*coverage.Article
+}
+
+type ViewPubQuery struct {
+	Publication bson.ObjectId
+	Feeds       MultiQuery
+	Articles    MultiQuery
 }
