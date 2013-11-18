@@ -51,8 +51,26 @@ func (s *StorageReader) Article(in *types.ObjectId, out *coverage.Article) error
 	return s.m.GetArticle(in.Id, out)
 }
 
+func (s *StorageReader) Articles(in *types.MultiQuery, out *types.MultiArticles) (err error) {
+	if out.Total, err = s.m.C.Articles.Find(in.Query).Count(); err != nil {
+		return
+	}
+	out.Query = *in
+	out.Articles = make([]*coverage.Article, 0, in.Limit)
+	return s.m.GetArticles(in.Query, in.Sort, in.Skip, in.Limit, in.Select, &out.Articles)
+}
+
 func (s *StorageReader) Feed(in *types.ObjectId, out *coverage.Feed) error {
 	return s.m.GetFeed(in.Id, out)
+}
+
+func (s *StorageReader) Feeds(in *types.MultiQuery, out *types.MultiFeeds) (err error) {
+	if out.Total, err = s.m.C.Feeds.Find(in.Query).Count(); err != nil {
+		return
+	}
+	out.Query = *in
+	out.Feeds = make([]*coverage.Feed, 0, in.Limit)
+	return s.m.GetFeeds(in.Query, in.Sort, in.Skip, in.Limit, in.Select, &out.Feeds)
 }
 
 func (s *StorageReader) OldestFeed(in *types.ObjectIds, out *coverage.Feed) error {

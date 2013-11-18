@@ -41,10 +41,22 @@ type ObjectId struct {
 
 type MultiQuery struct {
 	Query  interface{}
-	Select map[string]int
+	Select interface{}
 	Sort   string
 	Skip   int
 	Limit  int
+}
+
+type MultiArticles struct {
+	Query    MultiQuery
+	Total    int
+	Articles []*coverage.Article
+}
+
+type MultiFeeds struct {
+	Query MultiQuery
+	Total int
+	Feeds []*coverage.Feed
 }
 
 type MultiPubs struct {
@@ -98,8 +110,8 @@ type Stat struct {
 
 type ViewPub struct {
 	Publication *coverage.Publication
-	Feeds       []*coverage.Feed
-	Articles    []*coverage.Article
+	Feeds       MultiFeeds
+	Articles    MultiArticles
 }
 
 type ViewPubQuery struct {
