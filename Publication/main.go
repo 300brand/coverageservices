@@ -5,6 +5,7 @@ import (
 	"github.com/300brand/coverageservices/service"
 	"github.com/300brand/coverageservices/types"
 	"github.com/300brand/disgo"
+	"labix.org/v2/mgo/bson"
 	"net/url"
 )
 
@@ -72,9 +73,19 @@ func (s *Service) View(in *types.ViewPubQuery, out *types.ViewPub) (err error) {
 	if err = s.client.Call("StorageReader.Publication", pubId, &out.Publication); err != nil {
 		return
 	}
+
+	if in.Feeds.Query == nil {
+		in.Feeds.Query = make(bson.M)
+	}
+	in.Feeds.Query["publicationid"] = in.Publication
 	if err = s.client.Call("StorageReader.Feeds", in.Feeds, &out.Feeds); err != nil {
 		return
 	}
+
+	if in.Articles.Query == nil {
+		in.Articles.Query = make(bson.M)
+	}
+	in.Articles.Query["publicationid"] = in.Publication
 	if err = s.client.Call("StorageReader.Articles", in.Articles, &out.Articles); err != nil {
 		return
 	}

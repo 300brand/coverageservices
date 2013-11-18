@@ -40,7 +40,7 @@ type ObjectId struct {
 }
 
 type MultiQuery struct {
-	Query  interface{}
+	Query  bson.M
 	Select interface{}
 	Sort   string
 	Skip   int
