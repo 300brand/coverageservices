@@ -26,6 +26,11 @@ type DateSearch struct {
 	Query string
 }
 
+type NewFeed struct {
+	PublicationId bson.ObjectId
+	URL           string
+}
+
 type Inc struct {
 	Id    bson.ObjectId
 	Delta int
@@ -97,6 +102,12 @@ type SearchResults struct {
 	Ready     bool
 	Completed time.Time
 	Articles  []coverage.Article
+}
+
+type Set struct {
+	Id    bson.ObjectId
+	Key   string
+	Value interface{}
 }
 
 type Stat struct {

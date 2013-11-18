@@ -23,6 +23,7 @@ type Service struct {
 type logWriter struct{}
 
 type RPCArticle struct{ s *Service }
+type RPCFeed struct{ s *Service }
 type RPCManager struct{ s *Service }
 type RPCPublication struct{ s *Service }
 type RPCSearch struct{ s *Service }
@@ -56,6 +57,7 @@ func (s *Service) Start(client *disgo.Client) (err error) {
 	s.client = client
 
 	jsonrpc.RegisterService(&RPCArticle{s}, "Article")
+	jsonrpc.RegisterService(&RPCFeed{s}, "Feed")
 	jsonrpc.RegisterService(&RPCManager{s}, "Manager")
 	jsonrpc.RegisterService(&RPCPublication{s}, "Publication")
 	jsonrpc.RegisterService(&RPCSearch{s}, "Search")
@@ -90,6 +92,10 @@ func (m *RPCArticle) Get(r *http.Request, in *types.ObjectId, out *coverage.Arti
 	return m.s.client.Call("StorageReader.Article", in, out)
 }
 
+func (m *RPCFeed) Add(r *http.Request, in *types.NewFeed, out *coverage.Feed) (err error) {
+	return m.s.client.Call("Feed.Add", in, out)
+}
+
 func (m *RPCManager) ProcessNextFeed(r *http.Request, in *disgo.NullType, out *disgo.NullType) (err error) {
 	return m.s.client.Call("Manager.FeedProcessor", cmdOnce, disgo.Null)
 }
@@ -116,6 +122,10 @@ func (m *RPCPublication) View(r *http.Request, in *types.ViewPubQuery, out *type
 
 func (m *RPCPublication) GetAll(r *http.Request, in *types.MultiQuery, out *types.MultiPubs) (err error) {
 	return m.s.client.Call("StorageReader.Publications", in, out)
+}
+
+func (m *RPCPublication) Set(r *http.Request, in *types.Set, out *disgo.NullType) (err error) {
+	return m.s.client.Call("StorageWriter.UpdatePublication", in, out)
 }
 
 func (m *RPCSearch) Search(r *http.Request, in *types.SearchQuery, out *types.SearchQueryResponse) (err error) {

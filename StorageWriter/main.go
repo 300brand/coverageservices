@@ -122,3 +122,7 @@ func (s *StorageWriter) PubIncArticles(in *types.Inc, out *disgo.NullType) (err 
 func (s *StorageWriter) PubIncFeeds(in *types.Inc, out *disgo.NullType) (err error) {
 	return s.m.PublicationIncFeeds(in.Id, in.Delta)
 }
+
+func (s *StorageWriter) UpdatePublication(in *types.Set, out *disgo.NullType) (err error) {
+	return
+}

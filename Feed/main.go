@@ -10,6 +10,7 @@ import (
 	"github.com/300brand/disgo"
 	"github.com/300brand/logger"
 	"math/rand"
+	"net/url"
 	"sync/atomic"
 	"time"
 )
@@ -33,6 +34,18 @@ func (s *Service) Start(client *disgo.Client) (err error) {
 }
 
 // Service funcs
+
+func (s *Service) Add(in *types.NewFeed, out *coverage.Feed) (err error) {
+	*out = *coverage.NewFeed()
+	out.PublicationId = in.PublicationId
+	if out.URL, err = url.Parse(in.URL); err != nil {
+		return
+	}
+	if err = s.client.Call("StorageWriter.Feed", out, disgo.Null); err != nil {
+		return
+	}
+	return s.client.Call("StorageWriter.PubIncFeeds", &types.Inc{Id: in.PublicationId, Delta: 1}, disgo.Null)
+}
 
 func (s *Service) Process(in *types.ObjectId, out *disgo.NullType) (err error) {
 	start := time.Now()
