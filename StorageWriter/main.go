@@ -9,6 +9,7 @@ import (
 	"github.com/300brand/disgo"
 	"github.com/300brand/go-toml-config"
 	"github.com/300brand/logger"
+	"labix.org/v2/mgo/bson"
 	"time"
 )
 
@@ -124,5 +125,9 @@ func (s *StorageWriter) PubIncFeeds(in *types.Inc, out *disgo.NullType) (err err
 }
 
 func (s *StorageWriter) UpdatePublication(in *types.Set, out *disgo.NullType) (err error) {
-	return
+	c := s.m.Copy()
+	defer c.Close()
+	set := bson.M{"$set": bson.M{in.Key: in.Value}}
+	logger.Debug.Printf("StorageWriter.UpdatePublication: [P:%s] %+v", in.Id.Hex(), set)
+	return c.Publications.UpdateId(in.Id, set)
 }

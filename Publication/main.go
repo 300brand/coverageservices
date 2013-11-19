@@ -33,7 +33,7 @@ func (s *Service) Start(client *disgo.Client) (err error) {
 func (s *Service) Add(in *types.Pub, out *coverage.Publication) (err error) {
 	p := coverage.NewPublication()
 	p.Title = in.Title
-	p.Readership = in.Readership
+	p.NumReaders = in.Readership
 	if p.URL, err = url.Parse(in.URL); err != nil {
 		return
 	}
