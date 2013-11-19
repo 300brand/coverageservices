@@ -116,16 +116,16 @@ func (m *RPCPublication) Get(r *http.Request, in *types.ObjectId, out *coverage.
 	return m.s.client.Call("StorageReader.Publication", in, out)
 }
 
-func (m *RPCPublication) View(r *http.Request, in *types.ViewPubQuery, out *types.ViewPub) (err error) {
-	return m.s.client.Call("Publication.View", in, out)
-}
-
 func (m *RPCPublication) GetAll(r *http.Request, in *types.MultiQuery, out *types.MultiPubs) (err error) {
 	return m.s.client.Call("StorageReader.Publications", in, out)
 }
 
 func (m *RPCPublication) Set(r *http.Request, in *types.Set, out *disgo.NullType) (err error) {
 	return m.s.client.Call("StorageWriter.UpdatePublication", in, out)
+}
+
+func (m *RPCPublication) View(r *http.Request, in *types.ViewPubQuery, out *types.ViewPub) (err error) {
+	return m.s.client.Call("Publication.View", in, out)
 }
 
 func (m *RPCSearch) Search(r *http.Request, in *types.SearchQuery, out *types.SearchQueryResponse) (err error) {
