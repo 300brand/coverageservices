@@ -90,3 +90,20 @@ func (s *Service) Process(in *types.ObjectId, out *disgo.NullType) (err error) {
 	s.client.Call("Stats.Duration", &types.Stat{Name: "Feed.Process", Duration: time.Since(start)}, disgo.Null)
 	return
 }
+
+func (s *Service) Remove(in *types.ObjectId, out *disgo.NullType) (err error) {
+	f := new(coverage.Feed)
+	if err = s.client.Call("StorageReader.Feed", in, f); err != nil {
+		return
+	}
+	// Bail early if already deleted; don't want to mess up the feed count or
+	// trigger another write to the db
+	if f.Deleted {
+		return
+	}
+	f.Deleted = true
+	if err = s.client.Call("StorageWriter.Feed", f, disgo.Null); err != nil {
+		return
+	}
+	return s.client.Call("StorageWriter.PubIncFeeds", &types.Inc{Id: f.PublicationId, Delta: -1}, disgo.Null)
+}

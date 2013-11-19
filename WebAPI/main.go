@@ -96,6 +96,10 @@ func (m *RPCFeed) Add(r *http.Request, in *types.NewFeed, out *coverage.Feed) (e
 	return m.s.client.Call("Feed.Add", in, out)
 }
 
+func (m *RPCFeed) Remove(r *http.Request, in *types.ObjectId, out *disgo.NullType) (err error) {
+	return m.s.client.Call("Feed.Remove", in, out)
+}
+
 func (m *RPCManager) ProcessNextFeed(r *http.Request, in *disgo.NullType, out *disgo.NullType) (err error) {
 	return m.s.client.Call("Manager.FeedProcessor", cmdOnce, disgo.Null)
 }
