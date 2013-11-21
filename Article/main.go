@@ -3,8 +3,10 @@ package Article
 import (
 	"fmt"
 	"github.com/300brand/coverage"
+	"github.com/300brand/coverage/article/author"
 	"github.com/300brand/coverage/article/body"
 	"github.com/300brand/coverage/article/lexer"
+	"github.com/300brand/coverage/article/published"
 	"github.com/300brand/coverage/downloader"
 	"github.com/300brand/coverageservices/service"
 	"github.com/300brand/coverageservices/types"
@@ -59,13 +61,13 @@ func (s *Service) Process(in *coverage.Article, out *disgo.NullType) (err error)
 		}
 	}()
 
-	// Extract body
+	// Apply XPaths from pub
 	start = time.Now()
-	if err = body.SetBody(in); err != nil || in.Text.Body.Text == nil || len(in.Text.Body.Text) == 0 {
-		s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Process.Errors.BodyExtraction", Count: 1}, disgo.Null)
-		logger.Error.Printf("%s Body extraction error: %s", prefix, err)
-		return
+
+	if err = s.applyXPaths(in); err != nil {
+		logger.Error.Printf("%s %s", prefix, err)
 	}
+
 	s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Process.Body.Size", Count: len(in.Text.Body.Text)}, disgo.Null)
 
 	// Filter out individual words
@@ -78,5 +80,73 @@ func (s *Service) Process(in *coverage.Article, out *disgo.NullType) (err error)
 
 	s.client.Call("Stats.Duration", &types.Stat{Name: "Article.Process", Duration: time.Since(start)}, disgo.Null)
 	logger.Debug.Printf("%s Body Length: %d; Words: %d; Keywords: %d; Took: %s", prefix, len(in.Text.Body.Text), len(in.Text.Words.All), len(in.Text.Words.Keywords), time.Since(start))
+
+	return
+}
+
+func (s *Service) applyXPaths(a *coverage.Article) (err error) {
+	// Don't really like this as it adds another query into the DB, but we'll
+	// see how it goes
+	pub := new(coverage.Publication)
+	if err = s.client.Call("StorageReader.Publication", types.ObjectId{a.PublicationId}, pub); err != nil {
+		return fmt.Errorf("Fetch publication: %s", err)
+	}
+
+	// Authors
+	func(xpaths []string) {
+		if len(xpaths) == 0 {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Author.NoXPath", Count: 1}, disgo.Null)
+			return
+		}
+		if a.Author, err = author.Search(a.Text.HTML, xpaths); err != nil {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Author.Error", Count: 1}, disgo.Null)
+			logger.Error.Printf("Author Search: %s", err)
+			return
+		}
+		if a.Author != "" {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Author.Found", Count: 1}, disgo.Null)
+		} else {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Author.NotFound", Count: 1}, disgo.Null)
+		}
+	}(pub.XPaths.Author)
+
+	// Published Date
+	func(xpaths []string) {
+		if len(xpaths) == 0 {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Date.NoXPath", Count: 1}, disgo.Null)
+			return
+		}
+		if a.Published, err = published.Search(a.Text.HTML, xpaths); err != nil {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Date.Error", Count: 1}, disgo.Null)
+			logger.Error.Printf("Published Search: %s", err)
+			return
+		}
+		if a.Published.IsZero() {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Date.Found", Count: 1}, disgo.Null)
+		} else {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Date.NotFound", Count: 1}, disgo.Null)
+		}
+	}(pub.XPaths.Date)
+
+	// Published Body
+	func(xpaths []string) {
+		// if len(xpaths) == 0 {
+		if err = body.SetBody(a); err != nil || a.Text.Body.Text == nil || len(a.Text.Body.Text) == 0 {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Process.Errors.BodyExtraction", Count: 1}, disgo.Null)
+			err = fmt.Errorf("Body extraction error: %s", err)
+		}
+		return
+		// }
+		// if a.Text.Body.Text, err = author.Search(a.Text.HTML, xpaths); err != nil {
+		// 	s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Body.Error", Count: 1}, disgo.Null)
+		// 	return
+		// }
+		// if a.Text.Body.Text != "" {
+		// 	s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Body.Found", Count: 1}, disgo.Null)
+		// } else {
+		// 	s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Body.NotFound", Count: 1}, disgo.Null)
+		// }
+	}(pub.XPaths.Body)
+
 	return
 }
