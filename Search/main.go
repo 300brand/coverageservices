@@ -136,7 +136,8 @@ func (s *Service) Social(in *types.ObjectId, out *disgo.NullType) (err error) {
 				}
 				// Get stats
 				logger.Debug.Printf("Calling Social.Article for %s", id.Hex())
-				if err := s.client.Call("Social.Article", a, &a.Social); err != nil {
+				var socialStats social.Stats
+				if err := s.client.Call("Social.Article", a, &socialStats); err != nil {
 					logger.Error.Print(err)
 					return
 				}
@@ -144,7 +145,7 @@ func (s *Service) Social(in *types.ObjectId, out *disgo.NullType) (err error) {
 				stats := struct {
 					ArticleId, SearchId bson.ObjectId
 					Stats               social.Stats
-				}{id, info.Id, a.Social}
+				}{id, info.Id, socialStats}
 
 				buf := new(bytes.Buffer)
 				enc := json.NewEncoder(buf)
