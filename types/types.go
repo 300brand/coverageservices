@@ -86,6 +86,7 @@ type SearchQuery struct {
 	Dates struct {
 		Start, End time.Time
 	}
+	PublicationIds []bson.ObjectId
 }
 
 type SearchQueryResponse struct {
