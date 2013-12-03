@@ -85,6 +85,7 @@ func (s *Service) Process(in *coverage.Article, out *disgo.NullType) (err error)
 }
 
 func (s *Service) applyXPaths(a *coverage.Article) (err error) {
+	prefix := fmt.Sprintf("Article.ApplyXPaths: [P:%s] [F:%s] [A:%s] [U:%s]", a.PublicationId.Hex(), a.FeedId.Hex(), a.ID.Hex(), a.URL)
 	// Don't really like this as it adds another query into the DB, but we'll
 	// see how it goes
 	pub := new(coverage.Publication)
@@ -100,7 +101,7 @@ func (s *Service) applyXPaths(a *coverage.Article) (err error) {
 		}
 		if a.Author, err = author.Search(a.Text.HTML, xpaths); err != nil {
 			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Author.Error", Count: 1}, disgo.Null)
-			logger.Error.Printf("Author Search: %s", err)
+			logger.Error.Printf("%s Author Search: %s", prefix, err)
 			return
 		}
 		if a.Author != "" {
@@ -118,7 +119,7 @@ func (s *Service) applyXPaths(a *coverage.Article) (err error) {
 		}
 		if a.Published, err = published.Search(a.Text.HTML, xpaths); err != nil {
 			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Date.Error", Count: 1}, disgo.Null)
-			logger.Error.Printf("Published Search: %s", err)
+			logger.Error.Printf("%s Published Search: %s", prefix, err)
 			return
 		}
 		if a.Published.IsZero() {
@@ -137,6 +138,9 @@ func (s *Service) applyXPaths(a *coverage.Article) (err error) {
 			}
 		} else if err = body.XPath(a.Text.HTML, xpaths, &a.Text.Body); err != nil {
 			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Process.Errors.BodyXPath", Count: 1}, disgo.Null)
+		}
+		if err != nil {
+			logger.Error.Printf("%s Body Extraction: %s", prefix, err)
 		}
 		if len(a.Text.Body.Text) > 0 {
 			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Body.Found", Count: 1}, disgo.Null)
