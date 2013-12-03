@@ -130,22 +130,19 @@ func (s *Service) applyXPaths(a *coverage.Article) (err error) {
 
 	// Published Body
 	func(xpaths []string) {
-		// if len(xpaths) == 0 {
-		if err = body.SetBody(a); err != nil || a.Text.Body.Text == nil || len(a.Text.Body.Text) == 0 {
-			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Process.Errors.BodyExtraction", Count: 1}, disgo.Null)
-			err = fmt.Errorf("Body extraction error: %s", err)
+		if len(xpaths) == 0 {
+			if err = body.SetBody(a); err != nil || a.Text.Body.Text == nil || len(a.Text.Body.Text) == 0 {
+				s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Process.Errors.BodyExtraction", Count: 1}, disgo.Null)
+				err = fmt.Errorf("Body extraction error: %s", err)
+			}
+		} else if err = body.XPath(a.Text.HTML, xpaths, &a.Text.Body); err != nil {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Process.Errors.BodyXPath", Count: 1}, disgo.Null)
 		}
-		return
-		// }
-		// if a.Text.Body.Text, err = author.Search(a.Text.HTML, xpaths); err != nil {
-		// 	s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Body.Error", Count: 1}, disgo.Null)
-		// 	return
-		// }
-		// if a.Text.Body.Text != "" {
-		// 	s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Body.Found", Count: 1}, disgo.Null)
-		// } else {
-		// 	s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Body.NotFound", Count: 1}, disgo.Null)
-		// }
+		if len(a.Text.Body.Text) > 0 {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Body.Found", Count: 1}, disgo.Null)
+		} else {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Body.NotFound", Count: 1}, disgo.Null)
+		}
 	}(pub.XPaths.Body)
 
 	return
