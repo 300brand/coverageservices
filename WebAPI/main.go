@@ -79,7 +79,9 @@ func (s *Service) StartRPC() (err error) {
 	go func(l net.Listener) {
 		defer l.Close()
 		logger.Debug.Printf("WebAPI: HTTP RPC Listening on %s", l.Addr())
-		http.Handle("/rpc", handlers.LoggingHandler(new(logWriter), jsonrpc))
+		w := new(logWriter)
+		http.Handle("/rpc", handlers.LoggingHandler(w, jsonrpc))
+		http.HandleFunc("/exportSearch/", s.HandleExport)
 		logger.Error.Fatal(http.Serve(l, nil))
 	}(listener)
 
