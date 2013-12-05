@@ -8,7 +8,6 @@ import (
 	"github.com/300brand/disgo"
 	"github.com/300brand/go-toml-config"
 	"github.com/300brand/logger"
-	"labix.org/v2/mgo/bson"
 )
 
 type StorageReader struct {
@@ -100,18 +99,4 @@ func (s *StorageReader) Publications(in *types.MultiQuery, out *types.MultiPubs)
 
 func (s *StorageReader) Search(in *types.ObjectId, out *coverage.Search) error {
 	return s.m.GetSearch(in.Id, out)
-}
-
-// Helpers
-
-func objectIdify(m *bson.M) {
-	for k, v := range *m {
-		switch i := v.(type) {
-		case string:
-			if len(i) == 24 && bson.IsObjectIdHex(i) {
-				(*m)[k] = bson.ObjectIdHex(i)
-			}
-			// TODO Handle maps/arrays of IDs for $in clauses
-		}
-	}
 }
