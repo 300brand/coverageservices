@@ -100,3 +100,7 @@ func (s *StorageReader) Publications(in *types.MultiQuery, out *types.MultiPubs)
 func (s *StorageReader) Search(in *types.ObjectId, out *coverage.Search) error {
 	return s.m.GetSearch(in.Id, out)
 }
+
+func (s *StorageReader) Stats(in *disgo.NullType, out *mongo.Stats) error {
+	return s.m.GetStats(out)
+}
