@@ -110,6 +110,10 @@ func (m *RPCManager) StartFeeds(r *http.Request, in *disgo.NullType, out *disgo.
 	return m.s.client.Call("Manager.FeedProcessor", cmdStart, disgo.Null)
 }
 
+func (m *RPCManager) Stats(r *http.Request, in *disgo.NullType, out *types.Stats) (err error) {
+	return m.s.client.Call("StorageReader.Stats", in, &out.Database)
+}
+
 func (m *RPCManager) StopFeeds(r *http.Request, in *disgo.NullType, out *disgo.NullType) (err error) {
 	return m.s.client.Call("Manager.FeedProcessor", cmdStop, disgo.Null)
 }

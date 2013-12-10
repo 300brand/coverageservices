@@ -2,6 +2,7 @@ package types
 
 import (
 	"github.com/300brand/coverage"
+	"github.com/300brand/coverage/storage/mongo"
 	"labix.org/v2/mgo/bson"
 	"runtime"
 	"time"
@@ -118,6 +119,10 @@ type Stat struct {
 	Error      error
 	Goroutines int
 	Mem        runtime.MemStats
+}
+
+type Stats struct {
+	Database mongo.Stats
 }
 
 type ViewPub struct {
