@@ -113,6 +113,10 @@ func (s *Service) applyXPaths(a *coverage.Article) (err error) {
 
 	// Published Date
 	func(xpaths []string) {
+		// If the date is already set from the feed, skip this bit
+		if !a.Published.IsZero() {
+			return
+		}
 		if len(xpaths) == 0 {
 			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Date.NoXPath", Count: 1}, disgo.Null)
 			return
