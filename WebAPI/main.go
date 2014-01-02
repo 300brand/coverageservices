@@ -98,6 +98,11 @@ func (m *RPCFeed) Add(r *http.Request, in *types.NewFeed, out *coverage.Feed) (e
 	return m.s.client.Call("Feed.Add", in, out)
 }
 
+func (m *RPCFeed) Process(r *http.Request, in *types.ObjectId, out *disgo.NullType) (err error) {
+	go m.s.client.Call("Feed.Process", in, out)
+	return nil
+}
+
 func (m *RPCFeed) Remove(r *http.Request, in *types.ObjectId, out *disgo.NullType) (err error) {
 	return m.s.client.Call("Feed.Remove", in, out)
 }
