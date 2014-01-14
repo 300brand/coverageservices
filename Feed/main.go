@@ -9,7 +9,6 @@ import (
 	"github.com/300brand/coverageservices/types"
 	"github.com/300brand/disgo"
 	"github.com/300brand/logger"
-	"math/rand"
 	"net/url"
 	"sync/atomic"
 	"time"
@@ -85,7 +84,7 @@ func (s *Service) Process(in *types.ObjectId, out *disgo.NullType) (err error) {
 	for i, a := range f.Articles {
 		// Separate the dequeue times by 1-minute intervals to spread out
 		// processing
-		a.Dequeue = a.Added.Add(i * time.Minute)
+		a.Dequeue = a.Added.Add(time.Duration(i) * time.Minute)
 		s.client.Call("StorageWriter.ArticleQueueAdd", a, disgo.Null)
 	}
 	s.client.Call("Stats.Duration", &types.Stat{Name: "Feed.Process", Duration: time.Since(start)}, disgo.Null)

@@ -65,11 +65,11 @@ func (s *StorageWriter) ArticleQueueAdd(in *coverage.Article, out *disgo.NullTyp
 }
 
 func (s *StorageWriter) ArticleQueueNext(in *disgo.NullType, out *coverage.Article) (err error) {
-	return s.m.ArticleQueueNext(in)
+	return s.m.ArticleQueueNext(out)
 }
 
 func (s *StorageWriter) ArticleQueueRemove(in *types.ObjectId, out *disgo.NullType) (err error) {
-	return s.m.ArticleQueueRemove(in)
+	return s.m.ArticleQueueRemove(in.Id)
 }
 
 func (s *StorageWriter) Article(in *coverage.Article, out *coverage.Article) (err error) {
