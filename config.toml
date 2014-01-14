@@ -44,9 +44,12 @@
 
 [Manager]
     enabled                    = true
-    startup                    = false
-    tick                       = "30s"
-    downloaddelay              = "-2h0m0s"
+    startup                    = true
+    [Manager.article]
+        tick                   = "15s"
+    [Manager.feed]
+        tick                   = "30s"
+        downloaddelay          = "-2h0m0s"
 
 [Publication]
     enabled                    = true
