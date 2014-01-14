@@ -60,6 +60,18 @@ func (s *StorageWriter) NewSearch(in *coverage.Search, out *coverage.Search) (er
 	return s.m.UpdateSearch(out)
 }
 
+func (s *StorageWriter) ArticleQueueAdd(in *coverage.Article, out *disgo.NullType) (err error) {
+	return s.m.ArticleQueueAdd(in)
+}
+
+func (s *StorageWriter) ArticleQueueNext(in *disgo.NullType, out *coverage.Article) (err error) {
+	return s.m.ArticleQueueNext(in)
+}
+
+func (s *StorageWriter) ArticleQueueRemove(in *types.ObjectId, out *disgo.NullType) (err error) {
+	return s.m.ArticleQueueRemove(in)
+}
+
 func (s *StorageWriter) Article(in *coverage.Article, out *coverage.Article) (err error) {
 	start := time.Now()
 	prefix := fmt.Sprintf("StorageWriter.Article: [P:%s] [F:%s] [A:%s] [U:%s]", in.PublicationId.Hex(), in.FeedId.Hex(), in.ID.Hex(), in.URL)
