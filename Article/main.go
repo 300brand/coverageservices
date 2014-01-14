@@ -44,6 +44,9 @@ func (s *Service) Process(in *coverage.Article, out *disgo.NullType) (err error)
 		logger.Error.Printf("%s Download error: %s", prefix, err)
 		return
 	}
+
+	defer s.client.Call("StorageWriter.ArticleQueueRemove", &types.ObjectId{in.ID}, disgo.Null)
+
 	if l := len(in.Text.HTML); int64(l) == downloader.MaxFileSize {
 		s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Process.Errors.DownloadTooBig", Count: 1}, disgo.Null)
 		err = fmt.Errorf("Document larger than max file size (%d)", downloader.MaxFileSize)
