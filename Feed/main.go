@@ -82,10 +82,11 @@ func (s *Service) Process(in *types.ObjectId, out *disgo.NullType) (err error) {
 	}
 
 	s.client.Call("Stats.Increment", &types.Stat{Name: "Feed.Process.NewArticles", Count: len(f.Articles)}, disgo.Null)
-	for _, a := range f.Articles {
-		// Add a 5-15 second delay between article downloads
-		<-time.After(time.Duration(rand.Int63n(10)+5) * time.Second)
-		s.client.Call("Article.Process", a, disgo.Null)
+	for i, a := range f.Articles {
+		// Separate the dequeue times by 1-minute intervals to spread out
+		// processing
+		a.Dequeue = a.Added.Add(i * time.Minute)
+		s.client.Call("StorageWriter.ArticleQueueAdd", a, disgo.Null)
 	}
 	s.client.Call("Stats.Duration", &types.Stat{Name: "Feed.Process", Duration: time.Since(start)}, disgo.Null)
 	return
