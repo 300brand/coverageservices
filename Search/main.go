@@ -103,11 +103,15 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 	// notification of completeness
 	go func(cs *coverage.Search) {
 		wg.Wait()
-		if err := s.client.Call("Search.NotifyComplete", types.ObjectId{cs.Id}, disgo.Null); err != nil {
-			logger.Error.Print(err)
+		if cs.Notify.Done != "" {
+			if err := s.client.Call("Search.NotifyComplete", types.ObjectId{cs.Id}, disgo.Null); err != nil {
+				logger.Error.Print(err)
+			}
 		}
-		if err := s.client.Call("Search.Social", types.ObjectId{cs.Id}, disgo.Null); err != nil {
-			logger.Error.Print(err)
+		if cs.Notify.Social != "" {
+			if err := s.client.Call("Search.Social", types.ObjectId{cs.Id}, disgo.Null); err != nil {
+				logger.Error.Print(err)
+			}
 		}
 		logger.Info.Printf("Search completed in %s", time.Since(cs.Start))
 	}(cs)
