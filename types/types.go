@@ -83,6 +83,7 @@ type SearchQuery struct {
 	Notify         notify
 	Dates          startend
 	PublicationIds []bson.ObjectId
+	Foreground     bool // During group queries, don't background the processing
 }
 
 type SearchQueryResponse struct {

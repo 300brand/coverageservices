@@ -99,6 +99,11 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 		}(ds)
 	}
 
+	// If foregrounded, wait for everything to finish first
+	if in.Foreground {
+		wg.Wait()
+	}
+
 	// Wait for all of the DateSearch calls to finish, then send the
 	// notification of completeness
 	go func(cs *coverage.Search) {
