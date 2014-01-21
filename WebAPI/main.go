@@ -143,6 +143,10 @@ func (m *RPCPublication) View(r *http.Request, in *types.ViewPubQuery, out *type
 	return m.s.client.Call("Publication.View", in, out)
 }
 
+func (m *RPCSearch) Group(r *http.Request, in *types.GroupQuery, out *types.SearchQueryResponse) (err error) {
+	return m.s.client.Call("Search.GroupSearch", in, out)
+}
+
 func (m *RPCSearch) Search(r *http.Request, in *types.SearchQuery, out *types.SearchQueryResponse) (err error) {
 	return m.s.client.Call("Search.Search", in, out)
 }
