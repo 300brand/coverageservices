@@ -79,14 +79,9 @@ type Pub struct {
 }
 
 type SearchQuery struct {
-	Q      string
-	Notify struct {
-		Done   string
-		Social string
-	}
-	Dates struct {
-		Start, End time.Time
-	}
+	Q              string
+	Notify         notify
+	Dates          startend
 	PublicationIds []bson.ObjectId
 }
 
@@ -125,6 +120,13 @@ type Stats struct {
 	Database mongo.Stats
 }
 
+type GroupQuery struct {
+	Queries        []query
+	Notify         notify
+	Dates          startend
+	PublicationIds []bson.ObjectId
+}
+
 type ViewPub struct {
 	Publication *coverage.Publication
 	Feeds       MultiFeeds
@@ -135,4 +137,19 @@ type ViewPubQuery struct {
 	Publication bson.ObjectId
 	Feeds       MultiQuery
 	Articles    MultiQuery
+}
+
+// Private types
+type notify struct {
+	Done   string
+	Social string
+}
+
+type query struct {
+	Q     string
+	Label string
+}
+
+type startend struct {
+	Start, End time.Time
 }
