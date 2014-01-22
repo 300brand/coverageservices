@@ -83,19 +83,18 @@
 # Notes for setting up new storage units with different prefixes:
 # prefix = "Prefix_From_Config_";
 # sh.enableSharding(prefix + "Articles");
-# sh.shardCollection(prefix + "Articles.Articles", { _id: 1 });
+# sh.shardCollection(prefix + "Articles.Articles", { _id: "hashed" });
 # sh.shardCollection(prefix + "Articles.ArticleQ", { queue: 1 });
 # sh.enableSharding(prefix + "Feeds");
-# sh.shardCollection(prefix + "Feeds.Feeds", { _id: 1 });
+# sh.shardCollection(prefix + "Feeds.Feeds", { _id: "hashed" });
 # sh.shardCollection(prefix + "Feeds.FeedQ", { queue: 1 });
 # sh.enableSharding(prefix + "Keywords");
-# sh.shardCollection(prefix + "Keywords.Keywords", { _id: 1 });
+# sh.shardCollection(prefix + "Keywords.Keywords", { _id: "hashed" });
 # sh.enableSharding(prefix + "Publications");
-# sh.shardCollection(prefix + "Publications.Publications", { _id: 1 });
+# sh.shardCollection(prefix + "Publications.Publications", { _id: "hashed" });
 # sh.enableSharding(prefix + "Search");
-# sh.shardCollection(prefix + "Search.Search", { _id: 1 });
-# sh.enableSharding(prefix + "SearchResults");
-# sh.shardCollection(prefix + "SearchResults.SearchResults", { _id: 1 });
+# sh.shardCollection(prefix + "Search.Search", { _id: "hashed" });
+# sh.shardCollection(prefix + "Search.GroupSearch", { _id: "hashed" });
 # sh.enableSharding(prefix + "URLs");
 # sh.shardCollection(prefix + "URLs.URLs", { _id: 1 });
 
