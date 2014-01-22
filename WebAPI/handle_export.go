@@ -33,16 +33,26 @@ func (s *Service) HandleExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	searchId := bson.ObjectIdHex(qSearchId)
+
+	// See if the search is a group search:
+	groupSearch := new(coverage.GroupSearch)
+	if err := s.client.Call("StorageReader.GroupSearch", types.ObjectId{searchId}, groupSearch); err != nil {
+		groupSearch.SearchIds = []bson.ObjectId{searchId}
+	}
+
 	filename := filepath.Join(os.TempDir(), "dbs", fmt.Sprintf("%s-%d.sqlite3", qSearchId, limit))
 	os.MkdirAll(filepath.Dir(filename), 0755)
 	f, err := os.Open(filename)
 	if os.IsNotExist(err) {
-		if err := s.generateExport(searchId, filename, limit); err != nil {
-			logger.Error.Printf("[S:%s] HandleExport: %s", qSearchId, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		// Generate database:
+		for _, id := range groupSearch.SearchIds {
+			if err := s.generateExport(id, filename, limit); err != nil {
+				logger.Error.Printf("[S:%s] HandleExport: %s", qSearchId, err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			f, err = os.Open(filename)
 		}
-		f, err = os.Open(filename)
 	}
 
 	w.Header().Add("Content-Type", "application/x-sqlite3")
@@ -56,11 +66,19 @@ func (s *Service) generateExport(id bson.ObjectId, filename string, limit int) (
 	var (
 		aInsert    *sql.Stmt
 		pInsert    *sql.Stmt
+		sInsert    *sql.Stmt
 		sqlCreates = []string{
+			`CREATE TABLE IF NOT EXISTS Searches (
+				search_id CHAR(24) PRIMARY KEY,
+				query     TEXT,
+				label     TEXT,
+				duration  INTEGER
+			)`,
 			`CREATE TABLE IF NOT EXISTS Articles (
 				article_id     CHAR(24) PRIMARY KEY,
 				feed_id        CHAR(24),
 				publication_id CHAR(24),
+				search_id      CHAR(24),
 				author         TEXT,
 				title          TEXT,
 				url            TEXT,
@@ -100,10 +118,22 @@ func (s *Service) generateExport(id bson.ObjectId, filename string, limit int) (
 			return
 		}
 	}
-	if aInsert, err = tx.Prepare("INSERT INTO Articles VALUES (?, ?, ?, ?, ?, ?, ?, ?)"); err != nil {
+	if sInsert, err = tx.Prepare("INSERT INTO Searches VALUES (?, ?, ?, ?)"); err != nil {
 		return
 	}
-	if pInsert, err = tx.Prepare("INSERT INTO Pubs VALUES (?, ?, ?)"); err != nil {
+	if aInsert, err = tx.Prepare("INSERT INTO Articles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"); err != nil {
+		return
+	}
+	if pInsert, err = tx.Prepare("INSERT OR IGNORE INTO Pubs VALUES (?, ?, ?)"); err != nil {
+		return
+	}
+
+	if _, err = sInsert.Exec(
+		search.Id.Hex(),
+		search.Q,
+		search.Label,
+		(*search.Complete).Sub(search.Start).Nanoseconds(),
+	); err != nil {
 		return
 	}
 
@@ -129,6 +159,7 @@ func (s *Service) generateExport(id bson.ObjectId, filename string, limit int) (
 			a.ID.Hex(),
 			a.FeedId.Hex(),
 			a.PublicationId.Hex(),
+			search.Id.Hex(),
 			a.Author,
 			a.Title,
 			a.URL.String(),
