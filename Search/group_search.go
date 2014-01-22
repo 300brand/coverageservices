@@ -30,6 +30,7 @@ func (s *Service) GroupSearch(in *types.GroupQuery, out *types.SearchQueryRespon
 	for _, q := range in.Queries {
 		wg.Add(1)
 		searchQuery.Q = q.Q
+		searchQuery.Label = q.Label
 		go func(sq types.SearchQuery) {
 			resp := new(types.SearchQueryResponse)
 			s.client.Call("Search.Search", sq, resp)

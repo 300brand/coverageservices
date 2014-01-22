@@ -78,6 +78,7 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 		Id:             bson.NewObjectId(),
 		Notify:         in.Notify,
 		Q:              in.Q,
+		Label:          in.Label,
 		Dates:          in.Dates,
 		DaysLeft:       len(dates),
 		PublicationIds: in.PublicationIds,

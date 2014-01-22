@@ -80,6 +80,7 @@ type Pub struct {
 
 type SearchQuery struct {
 	Q              string
+	Label          string
 	Notify         notify
 	Dates          startend
 	PublicationIds []bson.ObjectId
