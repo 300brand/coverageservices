@@ -11,6 +11,8 @@ import (
 )
 
 func (s *Service) GroupSearch(in *types.GroupQuery, out *types.SearchQueryResponse) (err error) {
+	var gsLock sync.Mutex
+
 	gs := &coverage.GroupSearch{
 		Id: bson.NewObjectId(),
 	}
@@ -29,7 +31,11 @@ func (s *Service) GroupSearch(in *types.GroupQuery, out *types.SearchQueryRespon
 		wg.Add(1)
 		searchQuery.Q = q.Q
 		go func(sq types.SearchQuery) {
-			s.client.Call("Search.Search", sq, disgo.Null)
+			resp := new(types.SearchQueryResponse)
+			s.client.Call("Search.Search", sq, resp)
+			gsLock.Lock()
+			gs.SearchIds = append(gs.SearchIds, resp.Id)
+			gsLock.Unlock()
 			wg.Done()
 		}(searchQuery)
 	}
@@ -38,6 +44,13 @@ func (s *Service) GroupSearch(in *types.GroupQuery, out *types.SearchQueryRespon
 	// notification of completeness
 	go func(gs *coverage.GroupSearch) {
 		wg.Wait()
+		// This is a little manual, but it's explicit
+		gs.Complete = new(time.Time)
+		*gs.Complete = time.Now()
+		if err := s.client.Call("StorageWriter.UpdateGroupSearch", gs, disgo.Null); err != nil {
+			logger.Error.Printf("StorageWriter.UpdateGroupSearch: %s", err)
+			return
+		}
 		if gs.Notify.Done != "" {
 			if err := s.client.Call("Search.NotifyComplete", types.ObjectId{gs.Id}, disgo.Null); err != nil {
 				logger.Error.Print(err)

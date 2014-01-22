@@ -66,6 +66,10 @@ func (s *StorageWriter) NewGroupSearch(in *coverage.GroupSearch, out *coverage.G
 	return s.m.UpdateGroupSearch(out)
 }
 
+func (s *StorageWriter) UpdateGroupSearch(in *coverage.GroupSearch, out *disgo.NullType) (err error) {
+	return s.m.UpdateGroupSearch(in)
+}
+
 func (s *StorageWriter) ArticleQueueAdd(in *coverage.Article, out *disgo.NullType) (err error) {
 	return s.m.ArticleQueueAdd(in)
 }
