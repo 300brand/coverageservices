@@ -9,7 +9,6 @@ import (
 	"github.com/300brand/logger"
 	"net/http"
 	"os"
-	"strings"
 
 	_ "github.com/300brand/coverageservices/Article"
 	_ "github.com/300brand/coverageservices/Feed"
@@ -25,10 +24,11 @@ import (
 )
 
 var (
-	configFile     = flag.String("config", "config.toml", "Config file location")
-	showConfig     = flag.Bool("showconfig", false, "Show configuration and exit")
-	gearmanServers = config.String("gearman.servers", ":4730")
-	pprofListen    = config.String("pprof.listen", ":6060")
+	configFile      = flag.String("config", "config.toml", "Config file location")
+	showConfig      = flag.Bool("showconfig", false, "Show configuration and exit")
+	gearmanServers  = config.String("gearman.servers", ":4730")
+	beanstalkServer = config.String("beanstalk.server", "127.0.0.1:11300")
+	pprofListen     = config.String("pprof.listen", ":6060")
 )
 
 func main() {
@@ -61,20 +61,25 @@ func main() {
 		logger.Error.Println(http.ListenAndServe(*pprofListen, nil))
 	}()
 
-	// Prepare for Gearman
-	addrs := strings.Split(*gearmanServers, ",")
-	server := disgo.NewServer(addrs...)
+	server, err := disgo.NewServer(*beanstalkServer)
+	if err != nil {
+		logger.Error.Fatalf("Error connecting server: %s", err)
+	}
+
+	client, err := disgo.NewClient(*beanstalkServer)
+	if err != nil {
+		logger.Error.Fatalf("Error connecting client: %s", err)
+	}
 
 	for name, s := range service.GetServices() {
 		logger.Info.Printf("Registering service: %s", name)
 		server.RegisterName(name, s)
 
-		client := disgo.NewClient(addrs...)
 		if err := s.Start(client); err != nil {
 			logger.Error.Fatal("Failed to start %s: %s", name, err)
 		}
 		defer client.Close()
 	}
-	//return
-	server.Serve()
+
+	logger.Error.Fatal(server.Serve())
 }
