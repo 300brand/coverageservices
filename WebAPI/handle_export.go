@@ -163,7 +163,7 @@ func (s *Service) generateExport(id bson.ObjectId, filename string, limit int) (
 			search.Id.Hex(),
 			a.Author,
 			a.Title,
-			a.URL.String(),
+			a.URL,
 			string(a.Text.Body.Text),
 			a.Published,
 		); err != nil {
@@ -188,7 +188,7 @@ func (s *Service) generateExport(id bson.ObjectId, filename string, limit int) (
 		if _, err = pInsert.Exec(
 			p.ID.Hex(),
 			p.Title,
-			p.URL.String(),
+			p.URL,
 		); err != nil {
 			return
 		}

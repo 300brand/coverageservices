@@ -34,16 +34,15 @@ func (s *Service) Add(in *types.Pub, out *coverage.Publication) (err error) {
 	p := coverage.NewPublication()
 	p.Title = in.Title
 	p.NumReaders = in.Readership
-	if p.URL, err = url.Parse(in.URL); err != nil {
+	if _, err = url.Parse(in.URL); err != nil {
 		return
 	}
+	p.URL = in.URL
 	feeds := make([]*coverage.Feed, len(in.Feeds))
 	for i, feedUrl := range in.Feeds {
 		feeds[i] = coverage.NewFeed()
 		feeds[i].PublicationId = p.ID
-		if feeds[i].URL, err = url.Parse(feedUrl); err != nil {
-			return
-		}
+		feeds[i].URL = feedUrl
 		p.NumFeeds++
 	}
 	if err = s.client.Call("StorageWriter.Publication", p, disgo.Null); err != nil {

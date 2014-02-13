@@ -37,9 +37,10 @@ func (s *Service) Start(client *disgo.Client) (err error) {
 func (s *Service) Add(in *types.NewFeed, out *coverage.Feed) (err error) {
 	*out = *coverage.NewFeed()
 	out.PublicationId = in.PublicationId
-	if out.URL, err = url.Parse(in.URL); err != nil {
+	if _, err = url.Parse(in.URL); err != nil {
 		return
 	}
+	out.URL = in.URL
 	if err = s.client.Call("StorageWriter.Feed", out, disgo.Null); err != nil {
 		return
 	}

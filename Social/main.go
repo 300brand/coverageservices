@@ -22,5 +22,5 @@ func (s *Service) Start(client *disgo.Client) (err error) { return }
 // Service funcs
 
 func (s *Service) Article(in *coverage.Article, out *social.Stats) (err error) {
-	return social.Fetch(in.URL, out)
+	return social.FetchString(in.URL, out)
 }
