@@ -71,9 +71,14 @@ func main() {
 		logger.Error.Fatalf("Error connecting client: %s", err)
 	}
 
+	var haveServices bool
 	for name, s := range service.GetServices() {
 		logger.Info.Printf("Registering service: %s", name)
-		server.RegisterName(name, s)
+		if err := server.RegisterName(name, s); err != nil {
+			logger.Warn.Printf("Error registering services for %s", name)
+		} else {
+			haveServices = true
+		}
 
 		if err := s.Start(client); err != nil {
 			logger.Error.Fatal("Failed to start %s: %s", name, err)
@@ -81,5 +86,12 @@ func main() {
 		defer client.Close()
 	}
 
-	logger.Error.Fatal(server.Serve())
+	if haveServices {
+		// Run DisGo server!
+		logger.Error.Fatal(server.Serve())
+	} else {
+		// This only happens when just the WebAPI service is running (no
+		// exported service methods)
+		select {}
+	}
 }
