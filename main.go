@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/gob"
 	"flag"
 	"fmt"
 	"github.com/300brand/coverageservices/service"
 	"github.com/300brand/disgo"
 	"github.com/300brand/go-toml-config"
 	"github.com/300brand/logger"
+	"labix.org/v2/mgo/bson"
 	"net/http"
 	"os"
 
@@ -30,6 +32,11 @@ var (
 	beanstalkServer = config.String("beanstalk.server", "127.0.0.1:11300")
 	pprofListen     = config.String("pprof.listen", ":6060")
 )
+
+func init() {
+	gob.Register(new(bson.M))
+	gob.Register(new(bson.D))
+}
 
 func main() {
 	// Parse flags and config
