@@ -36,6 +36,8 @@ var (
 func init() {
 	gob.Register(new(bson.M))
 	gob.Register(new(bson.D))
+	gob.Register(new(bson.ObjectId))
+	gob.Register([]bson.ObjectId{})
 }
 
 func main() {
