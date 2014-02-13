@@ -26,7 +26,7 @@ import (
 var (
 	configFile      = flag.String("config", "config.toml", "Config file location")
 	showConfig      = flag.Bool("showconfig", false, "Show configuration and exit")
-	gearmanServers  = config.String("gearman.servers", ":4730")
+	disgoServe      = config.String("disgo.serve", "127.0.0.1:10000")
 	beanstalkServer = config.String("beanstalk.server", "127.0.0.1:11300")
 	pprofListen     = config.String("pprof.listen", ":6060")
 )
@@ -88,7 +88,7 @@ func main() {
 
 	if haveServices {
 		// Run DisGo server!
-		logger.Error.Fatal(server.Serve())
+		logger.Error.Fatal(server.Serve(*disgoServe))
 	} else {
 		// This only happens when just the WebAPI service is running (no
 		// exported service methods)
