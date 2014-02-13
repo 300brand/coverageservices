@@ -149,6 +149,7 @@ func (s *Service) generateExport(id bson.ObjectId, filename string, limit int) (
 			"text.html":  0,
 			"text.words": 0,
 		},
+		Limit: limit,
 	}
 	if err = s.client.Call("StorageReader.Articles", aQuery, articles); err != nil {
 		return
