@@ -110,7 +110,7 @@ func (s *Service) generateExport(id bson.ObjectId, filename string, limit int) (
 		return
 	}
 
-	if len(search.Articles) > limit {
+	if limit > 0 && len(search.Articles) > limit {
 		search.Articles = search.Articles[:limit]
 	}
 
@@ -149,7 +149,6 @@ func (s *Service) generateExport(id bson.ObjectId, filename string, limit int) (
 			"text.html":  0,
 			"text.words": 0,
 		},
-		Limit: limit,
 	}
 	if err = s.client.Call("StorageReader.Articles", aQuery, articles); err != nil {
 		return
