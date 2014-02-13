@@ -33,6 +33,7 @@ func (s *Service) HandleExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	searchId := bson.ObjectIdHex(qSearchId)
+	logger.Debug.Printf("Exporting results for %s", searchId)
 
 	// See if the search is a group search:
 	groupSearch := new(coverage.GroupSearch)

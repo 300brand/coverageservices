@@ -102,6 +102,7 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 
 	// If foregrounded, wait for everything to finish first
 	if in.Foreground {
+		logger.Trace.Printf("Waiting in foreground for DateSearches to finish")
 		wg.Wait()
 	}
 
@@ -109,6 +110,7 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 	// notification of completeness
 	go func(cs *coverage.Search) {
 		wg.Wait()
+		logger.Trace.Printf("Sending notifications to %s and %s", cs.Notify.Done, cs.Notify.Social)
 		if cs.Notify.Done != "" {
 			if err := s.client.Call("Search.NotifyComplete", types.ObjectId{cs.Id}, disgo.Null); err != nil {
 				logger.Error.Print(err)
