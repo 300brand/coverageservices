@@ -7,7 +7,6 @@ import (
 	"github.com/300brand/coverageservices/types"
 	"github.com/300brand/disgo"
 	"github.com/300brand/logger"
-	"labix.org/v2/mgo/bson"
 	"net/http"
 	"sync"
 	"time"
