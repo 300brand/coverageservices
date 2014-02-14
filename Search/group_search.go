@@ -16,6 +16,7 @@ func (s *Service) GroupSearch(in *types.GroupQuery, out *types.SearchQueryRespon
 	gs := &coverage.GroupSearch{
 		Id: bson.NewObjectId(),
 	}
+	gs.Notify.Done = in.Notify.Done
 	s.client.Call("StorageWriter.NewGroupSearch", gs, gs)
 
 	searchQuery := types.SearchQuery{
