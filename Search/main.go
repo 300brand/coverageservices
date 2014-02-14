@@ -40,7 +40,7 @@ func (s *Service) Start(client *disgo.Client) (err error) {
 
 // Service funcs
 
-func (s *Service) NotifyComplete(in *types.ObjectId, out *disgo.NullType) (err error) {
+func (s *Service) SearchNotifyComplete(in *types.ObjectId, out *disgo.NullType) (err error) {
 	info := new(coverage.Search)
 	if err = s.client.Call("StorageReader.Search", in, info); err != nil {
 		return
@@ -112,7 +112,7 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 		wg.Wait()
 		logger.Trace.Printf("Sending notifications to %s and %s", cs.Notify.Done, cs.Notify.Social)
 		if cs.Notify.Done != "" {
-			if err := s.client.Call("Search.NotifyComplete", types.ObjectId{cs.Id}, disgo.Null); err != nil {
+			if err := s.client.Call("Search.SearchNotifyComplete", types.ObjectId{cs.Id}, disgo.Null); err != nil {
 				logger.Error.Print(err)
 			}
 		}
