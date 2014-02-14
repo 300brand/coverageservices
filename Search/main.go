@@ -74,15 +74,14 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 		dates = append(dates, t)
 	}
 
-	cs := &coverage.Search{
-		Id:             bson.NewObjectId(),
-		Notify:         in.Notify,
-		Q:              in.Q,
-		Label:          in.Label,
-		Dates:          in.Dates,
-		DaysLeft:       len(dates),
-		PublicationIds: in.PublicationIds,
-	}
+	cs := coverage.NewSearch()
+	cs.Notify = in.Notify
+	cs.Q = in.Q
+	cs.Label = in.Label
+	cs.Dates = in.Dates
+	cs.DaysLeft = len(dates)
+	cs.PublicationIds = in.PublicationIds
+
 	if err = s.client.Call("StorageWriter.NewSearch", cs, cs); err != nil {
 		return
 	}

@@ -16,9 +16,7 @@ import (
 func (s *Service) GroupSearch(in *types.GroupQuery, out *types.SearchQueryResponse) (err error) {
 	var gsLock sync.Mutex
 
-	gs := &coverage.GroupSearch{
-		Id: bson.NewObjectId(),
-	}
+	gs := coverage.NewGroupSearch()
 	gs.Notify.Done = in.Notify.Done
 	s.client.Call("StorageWriter.NewGroupSearch", gs, gs)
 
