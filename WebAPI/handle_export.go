@@ -76,7 +76,7 @@ func (s *Service) generateExport(id bson.ObjectId, filename string, limit int) (
 				duration  INTEGER
 			)`,
 			`CREATE TABLE IF NOT EXISTS Articles (
-				article_id     CHAR(24) PRIMARY KEY,
+				article_id     CHAR(24),
 				feed_id        CHAR(24),
 				publication_id CHAR(24),
 				search_id      CHAR(24),
@@ -84,7 +84,8 @@ func (s *Service) generateExport(id bson.ObjectId, filename string, limit int) (
 				title          TEXT,
 				url            TEXT,
 				body           TEXT,
-				published      DATETIME
+				published      DATETIME,
+				PRIMARY KEY    (article_id, search_id)
 			)`,
 			`CREATE TABLE IF NOT EXISTS Pubs (
 				publication_id CHAR(24) PRIMARY KEY,
