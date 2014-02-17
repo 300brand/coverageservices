@@ -120,15 +120,21 @@ func (s *Service) generateExport(id bson.ObjectId, filename string, limit int) (
 			return
 		}
 	}
+
 	if sInsert, err = tx.Prepare("INSERT INTO Searches VALUES (?, ?, ?, ?)"); err != nil {
 		return
 	}
+	defer sInsert.Close()
+
 	if aInsert, err = tx.Prepare("INSERT INTO Articles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"); err != nil {
 		return
 	}
+	defer aInsert.Close()
+
 	if pInsert, err = tx.Prepare("INSERT OR IGNORE INTO Pubs VALUES (?, ?, ?)"); err != nil {
 		return
 	}
+	defer pInsert.Close()
 
 	if _, err = sInsert.Exec(
 		search.Id.Hex(),
