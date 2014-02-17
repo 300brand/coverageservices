@@ -170,7 +170,8 @@ func (s *Service) Social(in *types.ObjectId, out *disgo.NullType) (err error) {
 
 				resp, err := http.Post(info.Notify.Social, "application/json", buf)
 				if err != nil {
-					return err
+					logger.Error.Printf("Error sending notifiation: %s", err)
+					return
 				}
 				resp.Body.Close()
 			}(id)
