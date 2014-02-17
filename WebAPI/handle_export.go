@@ -52,15 +52,15 @@ func (s *Service) HandleExport(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			f, err = os.Open(filename)
 		}
+		f, err = os.Open(filename)
 	}
+	defer f.Close()
 
 	w.Header().Add("Content-Type", "application/x-sqlite3")
 	if _, err := io.Copy(w, f); err != nil {
 		logger.Error.Printf("[S:%s] HandleExport: %s", qSearchId, err)
 	}
-	f.Close()
 }
 
 func (s *Service) generateExport(id bson.ObjectId, filename string, limit int) (err error) {
