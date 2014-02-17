@@ -86,9 +86,11 @@ func (s *Service) GroupSearchNotifyComplete(in *types.ObjectId, out *disgo.NullT
 		return
 	}
 
-	if _, err = http.Post(info.Notify.Done, "application/json", buf); err != nil {
+	resp, err := http.Post(info.Notify.Done, "application/json", buf)
+	if err != nil {
 		return
 	}
+	resp.Body.Close()
 
 	return
 }

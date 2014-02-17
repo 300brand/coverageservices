@@ -52,9 +52,11 @@ func (s *Service) SearchNotifyComplete(in *types.ObjectId, out *disgo.NullType) 
 		return
 	}
 
-	if _, err = http.Post(info.Notify.Done, "application/json", buf); err != nil {
+	resp, err := http.Post(info.Notify.Done, "application/json", buf)
+	if err != nil {
 		return
 	}
+	resp.Body.Close()
 
 	return
 }
@@ -165,9 +167,12 @@ func (s *Service) Social(in *types.ObjectId, out *disgo.NullType) (err error) {
 					return
 				}
 				logger.Debug.Printf("Sending %+v to %s", stats, info.Notify.Social)
-				if _, err = http.Post(info.Notify.Social, "application/json", buf); err != nil {
-					return
+
+				resp, err := http.Post(info.Notify.Social, "application/json", buf)
+				if err != nil {
+					return err
 				}
+				resp.Body.Close()
 			}(id)
 			<-time.After(*cfgSocialDelay)
 		}
