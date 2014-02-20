@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	_ "code.google.com/p/gosqlite/sqlite3"
 )
@@ -135,6 +136,11 @@ func (s *Service) generateExport(id bson.ObjectId, filename string, limit int) (
 		return
 	}
 	defer pInsert.Close()
+
+	if search.Complete == nil {
+		logger.Warn.Printf("[S:%s] search.Complete is nil, setting to now", search.Id.Hex())
+		*search.Complete = time.Now()
+	}
 
 	if _, err = sInsert.Exec(
 		search.Id.Hex(),
