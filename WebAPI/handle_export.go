@@ -139,7 +139,8 @@ func (s *Service) generateExport(id bson.ObjectId, filename string, limit int) (
 
 	if search.Complete == nil {
 		logger.Warn.Printf("[S:%s] search.Complete is nil, setting to now", search.Id.Hex())
-		*search.Complete = time.Now()
+		t := time.Now()
+		search.Complete = *t
 	}
 
 	if _, err = sInsert.Exec(
