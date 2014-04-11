@@ -7,6 +7,7 @@ import (
 	"github.com/300brand/coverage/article/body"
 	"github.com/300brand/coverage/article/lexer"
 	"github.com/300brand/coverage/article/published"
+	"github.com/300brand/coverage/article/title"
 	"github.com/300brand/coverage/downloader"
 	"github.com/300brand/coverageservices/service"
 	"github.com/300brand/coverageservices/types"
@@ -155,6 +156,28 @@ func (s *Service) applyXPaths(a *coverage.Article) (err error) {
 			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Body.NotFound", Count: 1}, disgo.Null)
 		}
 	}(pub.XPaths.Body)
+
+	// Title
+	func(xpaths []string) {
+		if a.Title != "" {
+			return
+		}
+
+		if len(xpaths) == 0 {
+			return
+		}
+
+		if a.Title, err = title.Search(a.Text.HTML, xpaths); err != nil {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Title.Error", Count: 1}, disgo.Null)
+			logger.Error.Printf("%s Title Search: %s", prefix, err)
+			return
+		}
+		if a.Title != "" {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Title.Found", Count: 1}, disgo.Null)
+		} else {
+			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Title.NotFound", Count: 1}, disgo.Null)
+		}
+	}(pub.XPaths.Title)
 
 	return
 }
