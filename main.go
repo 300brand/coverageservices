@@ -11,6 +11,7 @@ import (
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"os"
+	"strings"
 
 	_ "github.com/300brand/coverageservices/Article"
 	_ "github.com/300brand/coverageservices/Feed"
@@ -26,11 +27,12 @@ import (
 )
 
 var (
-	configFile      = flag.String("config", "config.toml", "Config file location")
-	showConfig      = flag.Bool("showconfig", false, "Show configuration and exit")
-	disgoServe      = config.String("disgo.serve", "127.0.0.1:10000")
-	beanstalkServer = config.String("beanstalk.server", "127.0.0.1:11300")
-	pprofListen     = config.String("pprof.listen", ":6060")
+	configFile     = flag.String("config", "config.toml", "Config file location")
+	showConfig     = flag.Bool("showconfig", false, "Show configuration and exit")
+	disgoListen    = config.String("disgo.listen", "127.0.0.1:10000")
+	disgoBroadcast = config.String("disgo.broadcast", "")
+	etcdServers    = config.String("disgo.etcd.servers", "127.0.0.1:4001")
+	pprofListen    = config.String("pprof.listen", ":6060")
 )
 
 func init() {
@@ -70,12 +72,12 @@ func main() {
 		logger.Error.Println(http.ListenAndServe(*pprofListen, nil))
 	}()
 
-	server, err := disgo.NewServer(*beanstalkServer)
+	server, err := disgo.NewServer(strings.Split(*etcdServers, ","), *disgoBroadcast)
 	if err != nil {
 		logger.Error.Fatalf("Error connecting server: %s", err)
 	}
 
-	client, err := disgo.NewClient(*beanstalkServer)
+	client, err := disgo.NewClient(strings.Split(*etcdServers, ","))
 	if err != nil {
 		logger.Error.Fatalf("Error connecting client: %s", err)
 	}
@@ -97,7 +99,7 @@ func main() {
 
 	if haveServices {
 		// Run DisGo server!
-		logger.Error.Fatal(server.Serve(*disgoServe))
+		logger.Error.Fatal(server.Serve(*disgoListen))
 	} else {
 		// This only happens when just the WebAPI service is running (no
 		// exported service methods)

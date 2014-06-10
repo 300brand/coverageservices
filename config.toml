@@ -1,5 +1,8 @@
-[gearman]
-    servers                    = "gearman0.coverage.net:4730,gearman1.coverage.net:4730"
+[disgo]
+    broadcast                  = "192.168.20.17:10000"
+    listen                     = "0.0.0.0:10000"
+    [disgo.etcd]
+        servers                = "192.168.20.17:4001,192.168.20.18:4001,192.168.20.19:4001"
 
 [logging]
     enabled                    = true
@@ -28,13 +31,6 @@
         stdout                 = true
         stderr                 = false
         color                  = true
-
-# [reporting]
-#     enabled                    = true
-#     memory                     = true
-#     numgc                      = true
-#     goroutines                 = true
-#     timing                     = true
 
 [Article]
     enabled                    = true
@@ -79,24 +75,3 @@
 [WebAPI]
     enabled                    = true
     httplisten                 = ":8080"
-
-# Notes for setting up new storage units with different prefixes:
-# prefix = "Prefix_From_Config_";
-# sh.enableSharding(prefix + "Articles");
-# sh.shardCollection(prefix + "Articles.Articles", { _id: "hashed" });
-# sh.shardCollection(prefix + "Articles.ArticleQ", { queue: 1 });
-# sh.enableSharding(prefix + "Feeds");
-# sh.shardCollection(prefix + "Feeds.Feeds", { _id: "hashed" });
-# sh.shardCollection(prefix + "Feeds.FeedQ", { queue: 1 });
-# sh.enableSharding(prefix + "Keywords");
-# sh.shardCollection(prefix + "Keywords.Keywords", { _id: "hashed" });
-# sh.enableSharding(prefix + "Publications");
-# sh.shardCollection(prefix + "Publications.Publications", { _id: "hashed" });
-# sh.enableSharding(prefix + "Search");
-# sh.shardCollection(prefix + "Search.Search", { _id: "hashed" });
-# sh.shardCollection(prefix + "Search.GroupSearch", { _id: "hashed" });
-# sh.enableSharding(prefix + "URLs");
-# sh.shardCollection(prefix + "URLs.URLs", { _id: 1 });
-
-# Import all pubs:
-# jq -c .[] <pubs.json | gearman -n -f Publication.Add
