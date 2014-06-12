@@ -32,6 +32,7 @@ var (
 	disgoListen    = config.String("disgo.listen", "127.0.0.1:10000")
 	disgoBroadcast = config.String("disgo.broadcast", "")
 	etcdServers    = config.String("disgo.etcd.servers", "127.0.0.1:4001")
+	etcdTTL        = config.Uint64("disgo.etcd.ttl", 2)
 	pprofListen    = config.String("pprof.listen", ":6060")
 )
 
@@ -72,7 +73,7 @@ func main() {
 		logger.Error.Println(http.ListenAndServe(*pprofListen, nil))
 	}()
 
-	server, err := disgo.NewServer(strings.Split(*etcdServers, ","), *disgoBroadcast)
+	server, err := disgo.NewServer(strings.Split(*etcdServers, ","), *disgoBroadcast, *etcdTTL)
 	if err != nil {
 		logger.Error.Fatalf("Error connecting server: %s", err)
 	}
