@@ -85,6 +85,7 @@ type SearchQuery struct {
 	Dates          startend
 	PublicationIds []bson.ObjectId
 	Foreground     bool // During group queries, don't background the processing
+	Version        int  // Version 0 or 1: convert simple query format; 2: Use complex format
 }
 
 type SearchQueryResponse struct {

@@ -5,15 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/300brand/coverage"
+	"github.com/300brand/coverage/article/lexer"
 	"github.com/300brand/coverage/social"
 	"github.com/300brand/coverageservices/service"
 	"github.com/300brand/coverageservices/types"
 	"github.com/300brand/disgo"
 	"github.com/300brand/go-toml-config"
 	"github.com/300brand/logger"
+	"github.com/300brand/mongosearch"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"net/http"
-	"sync"
+	"strings"
 	"time"
 )
 
@@ -25,6 +28,7 @@ var (
 	_ service.Service = &Service{}
 
 	cfgSocialDelay = config.Duration("Search.socialdelay", time.Second)
+	cfgMongoServer = config.String("Search.mongodb", "127.0.0.1:27017")
 )
 
 func init() {
@@ -62,72 +66,126 @@ func (s *Service) SearchNotifyComplete(in *types.ObjectId, out *disgo.NullType) 
 }
 
 func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) (err error) {
-	// Validation
-	if in.Q == "" {
-		return fmt.Errorf("Query cannot be empty")
-	}
-	if in.Dates.Start.After(in.Dates.End) {
-		return fmt.Errorf("Invalid date range: %s > %s", in.Dates.Start, in.Dates.End)
+	id := bson.NewObjectId()
+	start := time.Now()
+
+	{ // Fill in legacy search document for export later (TODO Remove later?)
+		cs := coverage.NewSearch()
+		cs.Id = id
+		cs.Notify = in.Notify
+		cs.Q = in.Q
+		cs.Label = in.Label
+		cs.Dates = in.Dates
+		cs.PublicationIds = in.PublicationIds
+		if err = s.client.Call("StorageWriter.NewSearch", cs, cs); err != nil {
+			return
+		}
 	}
 
-	// This is just silly, but most efficient way to calculate
-	dates := []time.Time{}
-	for st, t := in.Dates.Start.AddDate(0, 0, -1), in.Dates.End; t.After(st); t = t.AddDate(0, 0, -1) {
-		dates = append(dates, t)
-	}
-
-	cs := coverage.NewSearch()
-	cs.Notify = in.Notify
-	cs.Q = in.Q
-	cs.Label = in.Label
-	cs.Dates = in.Dates
-	cs.DaysLeft = len(dates)
-	cs.PublicationIds = in.PublicationIds
-
-	if err = s.client.Call("StorageWriter.NewSearch", cs, cs); err != nil {
+	search, err := mongosearch.New(*cfgMongoServer, "300brand_Articles.Articles", "300brand_Search.Results", "text.words.all")
+	if err != nil {
 		return
 	}
 
-	ds := types.DateSearch{
-		Id:    cs.Id,
-		Query: cs.Q,
-	}
-	var wg sync.WaitGroup
-	for _, ds.Date = range dates {
-		wg.Add(1)
-		go func(ds types.DateSearch) {
-			s.client.Call("StorageWriter.DateSearch", ds, disgo.Null)
-			wg.Done()
-		}(ds)
+	search.Rewrite("", "text.words.keywords")
+	search.Convert("text.words.keywords", func(s string) (out interface{}, isArray bool, err error) {
+		isArray = true
+		out = lexer.Keywords([]byte(s))
+		return
+	})
+	search.Convert("published", mongosearch.ConvertDate)
+	search.Convert("publicationid", mongosearch.ConvertBsonId)
+
+	query := ""
+	switch in.Version {
+	case 0, 1:
+		quotedQuery := `"` + in.Q + `"`
+		quotedQuery = strings.Replace(quotedQuery, ` AND `, `" AND "`, -1)
+		quotedQuery = strings.Replace(quotedQuery, ` OR `, `" OR "`, -1)
+		quotedQuery = strings.Replace(quotedQuery, ` NOT `, `" NOT "`, -1)
+		qBits := strings.Split(quotedQuery, " NOT ")
+		for i := range qBits {
+			qBits[i] = "(" + qBits[i] + ")"
+		}
+		quotedQuery = strings.Join(qBits, " NOT ")
+		query = fmt.Sprintf(
+			"published>='%s' AND published<='%s' AND (%s)",
+			in.Dates.Start.Format(mongosearch.TimeLayout),
+			in.Dates.End.Format(mongosearch.TimeLayout),
+			quotedQuery,
+		)
+	case 2:
+		// Can't decide if the date range should be expected in the input?
+		query = fmt.Sprintf(
+			"published>='%s' AND published<='%s' AND (%s)",
+			in.Dates.Start.Format(mongosearch.TimeLayout),
+			in.Dates.End.Format(mongosearch.TimeLayout),
+			in.Q,
+		)
+
 	}
 
-	// If foregrounded, wait for everything to finish first
+	doSearch := func() {
+		if err := search.SearchInto(query, id); err != nil {
+			logger.Error.Printf("SearchInto: [%s] [%s] - %s", id.Hex(), query, err)
+			return
+		}
+
+		{ // Update search completion; transfer IDs (TODO Remove later?)
+			session, err := mgo.Dial(*cfgMongoServer)
+			if err != nil {
+				logger.Error.Printf("Error connecting to MongoDB: %s", err)
+				return
+			}
+			defer session.Close()
+
+			ids := []struct {
+				Id bson.ObjectId `bson:"_id"`
+			}{}
+			db := session.DB("300brand_Search")
+			if err := db.C("Results_" + id.Hex()).Find(nil).Select(bson.M{"_id": 1}).All(&ids); err != nil {
+				logger.Error.Printf("Error retrieving all IDs from Results_%s: %s", id.Hex(), err)
+				return
+			}
+
+			articleids := make([]bson.ObjectId, len(ids))
+			for i := range ids {
+				articleids[i] = ids[i].Id
+			}
+			if err := db.C("Search").UpdateId(id, bson.M{
+				"$set": bson.M{
+					"completed": time.Now(),
+					"articles":  articleids,
+					"results":   len(articleids),
+				},
+			}); err != nil {
+				logger.Error.Printf("Error updating search record [%s]: %s", id.Hex(), err)
+				return
+			}
+		}
+
+		logger.Trace.Printf("Sending notifications to %s and %s", in.Notify.Done, in.Notify.Social)
+		if in.Notify.Done != "" {
+			if err := s.client.Call("Search.SearchNotifyComplete", types.ObjectId{id}, disgo.Null); err != nil {
+				logger.Error.Print(err)
+			}
+		}
+		if in.Notify.Social != "" {
+			if err := s.client.Call("Search.Social", types.ObjectId{id}, disgo.Null); err != nil {
+				logger.Error.Print(err)
+			}
+		}
+		logger.Info.Printf("Search completed in %s", time.Since(start))
+	}
+
 	if in.Foreground {
-		logger.Trace.Printf("Waiting in foreground for DateSearches to finish")
-		wg.Wait()
+		doSearch()
+	} else {
+		go doSearch()
 	}
 
-	// Wait for all of the DateSearch calls to finish, then send the
-	// notification of completeness
-	go func(cs *coverage.Search) {
-		wg.Wait()
-		logger.Trace.Printf("Sending notifications to %s and %s", cs.Notify.Done, cs.Notify.Social)
-		if cs.Notify.Done != "" {
-			if err := s.client.Call("Search.SearchNotifyComplete", types.ObjectId{cs.Id}, disgo.Null); err != nil {
-				logger.Error.Print(err)
-			}
-		}
-		if cs.Notify.Social != "" {
-			if err := s.client.Call("Search.Social", types.ObjectId{cs.Id}, disgo.Null); err != nil {
-				logger.Error.Print(err)
-			}
-		}
-		logger.Info.Printf("Search completed in %s", time.Since(cs.Start))
-	}(cs)
-
-	// Prepare information for the caller
-	out.Id = cs.Id
-	out.Start = cs.Start
+	out.Id = id
+	out.Start = start
 
 	return
 }
