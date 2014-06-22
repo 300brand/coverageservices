@@ -107,7 +107,7 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 		for i := range qBits {
 			qqBits := strings.Split(quotedQuery, " OR ")
 			for ii := range qqBits {
-				qqBits[ii] = "(" + qBits[ii] + ")"
+				qqBits[ii] = "(" + qqBits[ii] + ")"
 			}
 			qBits[i] = "(" + strings.Join(qqBits, " OR ") + ")"
 		}
