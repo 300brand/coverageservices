@@ -88,13 +88,25 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 	}
 
 	search.Rewrite("", "text.words.keywords")
+	search.Rewrite("published", "pubdate.date")
 	search.Convert("text.words.keywords", func(s string) (out interface{}, isArray bool, err error) {
 		isArray = true
 		out = lexer.Keywords([]byte(s))
 		return
 	})
-	search.Convert("published", mongosearch.ConvertDate)
+	search.Convert("pubdate.date", mongosearch.ConvertDateInt)
 	search.Convert("publicationid", mongosearch.ConvertBsonId)
+
+	// This is just silly, but most efficient way to calculate
+	dates := []time.Time{}
+	for st, t := in.Dates.Start.AddDate(0, 0, -1), in.Dates.End; t.After(st); t = t.AddDate(0, 0, -1) {
+		dates = append(dates, t)
+	}
+	// Cast dates to string and proper format
+	queryDates := make([]string, len(dates))
+	for i := range dates {
+		queryDates[i] = fmt.Sprintf("'%s'", dates[i].Format(mongosearch.TimeLayout))
+	}
 
 	query := ""
 	switch in.Version {
@@ -112,18 +124,17 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 			qBits[i] = "(" + strings.Join(qqBits, " OR ") + ")"
 		}
 		quotedQuery = strings.Join(qBits, " NOT ")
+
 		query = fmt.Sprintf(
-			"published>='%s' AND published<='%s' AND (%s)",
-			in.Dates.Start.Format(mongosearch.TimeLayout),
-			in.Dates.End.Format(mongosearch.TimeLayout),
+			"pubdate.date:(%s) AND (%s)",
+			strings.Join(queryDates, " OR "),
 			quotedQuery,
 		)
 	case 2:
 		// Can't decide if the date range should be expected in the input?
 		query = fmt.Sprintf(
-			"published>='%s' AND published<='%s' AND (%s)",
-			in.Dates.Start.Format(mongosearch.TimeLayout),
-			in.Dates.End.Format(mongosearch.TimeLayout),
+			"pubdate.date:(%s) AND (%s)",
+			strings.Join(queryDates, " OR "),
 			in.Q,
 		)
 
