@@ -105,7 +105,11 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 		quotedQuery = strings.Replace(quotedQuery, ` NOT `, `" NOT "`, -1)
 		qBits := strings.Split(quotedQuery, " NOT ")
 		for i := range qBits {
-			qBits[i] = "(" + qBits[i] + ")"
+			qqBits := strings.Split(quotedQuery, " OR ")
+			for ii := range qqBits {
+				qqBits[ii] = "(" + qBits[ii] + ")"
+			}
+			qBits[i] = "(" + strings.Join(qqBits, " OR ") + ")"
 		}
 		quotedQuery = strings.Join(qBits, " NOT ")
 		query = fmt.Sprintf(
