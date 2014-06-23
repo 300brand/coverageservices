@@ -126,14 +126,14 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 		quotedQuery = strings.Join(qBits, " NOT ")
 
 		query = fmt.Sprintf(
-			"pubdate.date:(%s) AND (%s)",
+			"published:(%s) AND (%s)",
 			strings.Join(queryDates, " OR "),
 			quotedQuery,
 		)
 	case 2:
 		// Can't decide if the date range should be expected in the input?
 		query = fmt.Sprintf(
-			"pubdate.date:(%s) AND (%s)",
+			"published:(%s) AND (%s)",
 			strings.Join(queryDates, " OR "),
 			in.Q,
 		)
