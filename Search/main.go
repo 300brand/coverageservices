@@ -108,22 +108,29 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 		queryDates[i] = fmt.Sprintf("'%s'", dates[i].Format(mongosearch.TimeLayout))
 	}
 
-	query := ""
+	queryIn := ""
 	switch in.Version {
 	case 0, 1:
-		query = fmt.Sprintf(
-			"published:(%s) AND (%s)",
-			strings.Join(queryDates, " OR "),
-			queryV1toV2(in.Q),
-		)
+		queryIn = queryV1toV2(in.Q)
 	case 2:
 		// Can't decide if the date range should be expected in the input?
-		query = fmt.Sprintf(
-			"published:(%s) AND (%s)",
-			strings.Join(queryDates, " OR "),
-			in.Q,
-		)
+		queryIn = in.Q
+	default:
+		return fmt.Errorf("Invalid version: %d", in.Version)
+	}
 
+	query := fmt.Sprintf(
+		"published:(%s) AND (%s)",
+		strings.Join(queryDates, " OR "),
+		queryIn,
+	)
+
+	if len(in.PublicationIds) > 0 {
+		ids := make([]string, len(in.PublicationIds))
+		for i, id := range in.PublicationIds {
+			ids[i] = id.Hex()
+		}
+		query += fmt.Sprintf(" AND publicationid:(%s)", strings.Join(ids, " OR "))
 	}
 
 	doSearch := func() {
