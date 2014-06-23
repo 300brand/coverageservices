@@ -86,7 +86,9 @@ func (s *Service) Process(in *types.ObjectId, out *disgo.NullType) (err error) {
 		// Separate the dequeue times by 1-minute intervals to spread out
 		// processing
 		a.Dequeue = a.Added.Add(time.Duration(i) * time.Minute)
-		s.client.Call("StorageWriter.ArticleQueueAdd", a, disgo.Null)
+		if err := s.client.Call("StorageWriter.ArticleQueueAdd", a, disgo.Null); err != nil {
+			logger.Error.Printf("%s ArticleQueueAdd: %s", prefix, err)
+		}
 	}
 	s.client.Call("Stats.Duration", &types.Stat{Name: "Feed.Process", Duration: time.Since(start)}, disgo.Null)
 	return
