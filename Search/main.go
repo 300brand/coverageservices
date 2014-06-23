@@ -111,24 +111,10 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 	query := ""
 	switch in.Version {
 	case 0, 1:
-		quotedQuery := `"` + in.Q + `"`
-		quotedQuery = strings.Replace(quotedQuery, ` AND `, `" AND "`, -1)
-		quotedQuery = strings.Replace(quotedQuery, ` OR `, `" OR "`, -1)
-		quotedQuery = strings.Replace(quotedQuery, ` NOT `, `" NOT "`, -1)
-		qBits := strings.Split(quotedQuery, " NOT ")
-		for i := range qBits {
-			qqBits := strings.Split(quotedQuery, " OR ")
-			for ii := range qqBits {
-				qqBits[ii] = "(" + qqBits[ii] + ")"
-			}
-			qBits[i] = "(" + strings.Join(qqBits, " OR ") + ")"
-		}
-		quotedQuery = strings.Join(qBits, " NOT ")
-
 		query = fmt.Sprintf(
 			"published:(%s) AND (%s)",
 			strings.Join(queryDates, " OR "),
-			quotedQuery,
+			queryV1toV2(in.Q),
 		)
 	case 2:
 		// Can't decide if the date range should be expected in the input?
