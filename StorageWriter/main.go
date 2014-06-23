@@ -103,10 +103,10 @@ func (s *StorageWriter) Article(in *coverage.Article, out *coverage.Article) (er
 		logger.Error.Printf("%s Error incrementing pub article count: %s", prefix, err)
 		return
 	}
-	if err = s.m.AddKeywords(in); err != nil {
-		logger.Error.Printf("%s Error saving keywords: %s", prefix, err)
-		return
-	}
+	// if err = s.m.AddKeywords(in); err != nil {
+	// 	logger.Error.Printf("%s Error saving keywords: %s", prefix, err)
+	// 	return
+	// }
 	s.client.Call("Stats.Duration", types.Stat{Name: "StorageWriter.Article", Duration: time.Since(start)}, disgo.Null)
 	return
 }
