@@ -82,20 +82,20 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 		}
 	}
 
-	search, err := mongosearch.New(*cfgMongoServer, "300brand_Articles.Articles", "300brand_Search.Results", "text.words.all")
+	search, err := mongosearch.New(*cfgMongoServer, "300brand_Articles.Articles", "300brand_Search.Results")
 	if err != nil {
 		return
 	}
 
-	search.Rewrite("", "text.words.keywords")
-	search.Rewrite("published", "pubdate.date")
-	search.Convert("text.words.keywords", func(s string) (out interface{}, isArray bool, err error) {
+	keywordFunc := func(s string) (out interface{}, isArray bool, err error) {
 		isArray = true
 		out = lexer.Keywords([]byte(s))
 		return
-	})
-	search.Convert("pubdate.date", mongosearch.ConvertDateInt)
-	search.Convert("publicationid", mongosearch.ConvertBsonId)
+	}
+	search.SetAll("text.words.all")
+	search.SetKeyword("text.words.keywords", keywordFunc, "keywords")
+	search.SetPubdate("pubdate.date", mongosearch.ConvertDateInt, "published")
+	search.SetPubid("publicationid", mongosearch.ConvertBsonId, "publicationid")
 
 	// This is just silly, but most efficient way to calculate
 	dates := []time.Time{}
@@ -120,7 +120,7 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 	}
 
 	query := fmt.Sprintf(
-		"published:(%s) AND (%s)",
+		"published:(%s) AND keywords:(%s)",
 		strings.Join(queryDates, " OR "),
 		queryIn,
 	)
@@ -132,6 +132,8 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 		}
 		query += fmt.Sprintf(" AND publicationid:(%s)", strings.Join(ids, " OR "))
 	}
+
+	logger.Warn.Printf("Search.Search: Sending %s", query)
 
 	doSearch := func() {
 		if err := search.SearchInto(query, id); err != nil {
