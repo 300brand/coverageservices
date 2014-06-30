@@ -92,6 +92,7 @@ func (s *Service) Search(in *types.SearchQuery, out *types.SearchQueryResponse) 
 		out = lexer.Keywords([]byte(s))
 		return
 	}
+	search.SetCaseSensitive(in.CaseSensitive)
 	search.SetAll("text.words.all")
 	search.SetKeyword("text.words.keywords", keywordFunc, "keywords")
 	search.SetPubdate("pubdate.date", mongosearch.ConvertDateInt, "published")

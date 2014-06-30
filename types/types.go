@@ -84,6 +84,7 @@ type SearchQuery struct {
 	Notify         notify
 	Dates          startend
 	PublicationIds []bson.ObjectId
+	CaseSensitive  bool
 	Foreground     bool // During group queries, don't background the processing
 	Version        int  // Version 0 or 1: convert simple query format; 2: Use complex format
 }
@@ -149,8 +150,9 @@ type notify struct {
 }
 
 type query struct {
-	Q     string
-	Label string
+	Q             string
+	Label         string
+	CaseSensitive bool
 }
 
 type startend struct {
