@@ -88,6 +88,9 @@ func (s *Service) StartRPC() (err error) {
 	return
 }
 
+// Bunk func to get service registered
+func (s *Service) NOOP(in, out *disgo.NullType) (err error) { return }
+
 // RPC Funcs
 
 func (m *RPCArticle) Get(r *http.Request, in *types.ObjectId, out *coverage.Article) (err error) {
