@@ -3,6 +3,7 @@ package StorageWriter
 import (
 	"fmt"
 	"github.com/300brand/coverage"
+	"github.com/300brand/coverage/storage/elasticsearch"
 	"github.com/300brand/coverage/storage/mongo"
 	"github.com/300brand/coverageservices/service"
 	"github.com/300brand/coverageservices/types"
@@ -16,6 +17,7 @@ import (
 type StorageWriter struct {
 	client *disgo.Client
 	m      *mongo.Mongo
+	e      *elasticsearch.ElasticSearch
 }
 
 var _ service.Service = new(StorageWriter)
@@ -26,6 +28,7 @@ var (
 	cfgPrefix = config.String("StorageWriter.prefix", "A_")
 	// Addresses of MongoDB, see labix.org/mgo for format details
 	cfgMongoDB = config.String("StorageWriter.mongodb", "127.0.0.1")
+	cfgElastic = config.String("StorageWriter.elastic", "127.0.0.1")
 )
 
 func init() {
@@ -45,6 +48,8 @@ func (s *StorageWriter) Start(client *disgo.Client) (err error) {
 		return
 	}
 	logger.Debug.Println("StorageWriter: Connected to MongoDB")
+	s.e = elasticsearch.New(*cfgElastic)
+	logger.Debug.Println("StorageWriter: Connected to ElasticSearch")
 	return
 }
 
@@ -107,6 +112,9 @@ func (s *StorageWriter) Article(in *coverage.Article, out *coverage.Article) (er
 	// 	logger.Error.Printf("%s Error saving keywords: %s", prefix, err)
 	// 	return
 	// }
+	if err := s.e.SaveArticle(in); err != nil {
+		logger.Error.Printf("%s Error saving to ElasticSearch: %s", prefix, err)
+	}
 	s.client.Call("Stats.Duration", types.Stat{Name: "StorageWriter.Article", Duration: time.Since(start)}, disgo.Null)
 	return
 }
