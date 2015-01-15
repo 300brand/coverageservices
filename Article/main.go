@@ -137,15 +137,19 @@ func (s *Service) applyXPaths(a *coverage.Article) (err error) {
 		}
 	}(pub.XPaths.Date)
 
-	// Published Body
+	// Body
 	func(xpaths []string) {
-		if len(xpaths) == 0 {
+		if len(xpaths) > 0 {
+			if err = body.XPath(a.Text.HTML, xpaths, &a.Text.Body); err != nil {
+				s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Process.Errors.BodyXPath", Count: 1}, disgo.Null)
+			}
+		}
+		// Use default body extraction if no xpaths or xpaths failed
+		if len(xpaths) == 0 || a.Text.Body.Text == nil || len(a.Text.Body.Text) == 0 {
 			if err = body.SetBody(a); err != nil || a.Text.Body.Text == nil || len(a.Text.Body.Text) == 0 {
 				s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Process.Errors.BodyExtraction", Count: 1}, disgo.Null)
 				err = fmt.Errorf("Body extraction error: %s", err)
 			}
-		} else if err = body.XPath(a.Text.HTML, xpaths, &a.Text.Body); err != nil {
-			s.client.Call("Stats.Increment", &types.Stat{Name: "Article.Process.Errors.BodyXPath", Count: 1}, disgo.Null)
 		}
 		if err != nil {
 			logger.Error.Printf("%s Body Extraction: %s", prefix, err)
