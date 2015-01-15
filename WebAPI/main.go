@@ -97,6 +97,14 @@ func (m *RPCArticle) Get(r *http.Request, in *types.ObjectId, out *coverage.Arti
 	return m.s.client.Call("StorageReader.Article", in, out)
 }
 
+func (m *RPCArticle) Reprocess(r *http.Request, in *types.ObjectId, out *disgo.NullType) (err error) {
+	a := new(coverage.Article)
+	if err = m.Get(r, in, a); err != nil {
+		return
+	}
+	return m.s.client.Call("Article.Process", a, new(disgo.NullType))
+}
+
 func (m *RPCFeed) Add(r *http.Request, in *types.NewFeed, out *coverage.Feed) (err error) {
 	return m.s.client.Call("Feed.Add", in, out)
 }
