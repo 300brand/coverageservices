@@ -95,9 +95,9 @@ func (s *StorageWriter) Article(in *coverage.Article, out *coverage.Article) (er
 		*out = *in
 	}()
 
-	if err = s.m.AddURL(in.URL, in.ID); err != nil {
+	if err := s.m.AddURL(in.URL, in.ID); err != nil {
 		logger.Warn.Printf("%s Duplicate URL", prefix)
-		return
+		// return
 	}
 	if err = s.m.UpdateArticle(in); err != nil {
 		logger.Error.Printf("%s Error saving article: %s", prefix, err)
